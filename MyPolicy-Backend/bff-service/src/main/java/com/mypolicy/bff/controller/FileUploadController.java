@@ -16,10 +16,10 @@ public class FileUploadController {
   @PostMapping
   public ResponseEntity<Object> uploadFile(
       @RequestParam("file") MultipartFile file,
-      @RequestParam("customerId") String customerId,
+      @RequestParam("uploadedBy") String uploadedBy,
       @RequestParam("insurerId") String insurerId) {
 
-    return ResponseEntity.ok(ingestionClient.uploadFile(file, customerId, insurerId));
+    return ResponseEntity.ok(ingestionClient.uploadFile(file, insurerId, uploadedBy));
   }
 
   @GetMapping("/status/{jobId}")

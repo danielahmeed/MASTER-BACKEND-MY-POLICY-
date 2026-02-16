@@ -1,0 +1,22 @@
+# Ingestion Service - exclude Documentation folder
+MyPolicy-Backend/ingestion-service/Documentation/
+
+# Build outputs
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/settings.json
+
+# Upload storage (ingestion files)
+MyPolicy-Backend/ingestion-service/storage/ingestion/*.csv
+MyPolicy-Backend/ingestion-service/storage/ingestion/*.xlsx
+MyPolicy-Backend/ingestion-service/storage/ingestion/*.xls
+
+# OS
+.DS_Store
+Thumbs.db

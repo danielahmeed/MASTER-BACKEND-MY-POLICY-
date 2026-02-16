@@ -10,8 +10,8 @@ public interface IngestionClient {
 
   @PostMapping(value = "/api/v1/ingestion/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   Object uploadFile(@RequestPart("file") MultipartFile file,
-      @RequestParam("customerId") String customerId,
-      @RequestParam("insurerId") String insurerId);
+      @RequestParam("insurerId") String insurerId,
+      @RequestParam("uploadedBy") String uploadedBy);
 
   @GetMapping("/api/v1/ingestion/status/{jobId}")
   Object getJobStatus(@PathVariable("jobId") String jobId);
