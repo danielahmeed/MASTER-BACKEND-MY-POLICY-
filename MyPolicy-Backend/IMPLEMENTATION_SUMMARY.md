@@ -3,6 +3,7 @@
 ## ✅ What Was Delivered
 
 ### **7 Complete Microservices**
+
 1. ✅ **BFF Service** (Port 8080) - API Gateway with request aggregation
 2. ✅ **Customer Service** (Port 8081) - User management & JWT authentication
 3. ✅ **Ingestion Service** (Port 8082) - File upload handling
@@ -15,15 +16,15 @@
 
 ## 📚 Complete Documentation Suite
 
-| Document | Purpose | Lines |
-|----------|---------|-------|
-| **README.md** | Quick start & overview | 250+ |
-| **ARCHITECTURE.md** | Complete system architecture | 800+ |
-| **DEPLOYMENT.md** | Deployment guide (Local, Docker, K8s) | 500+ |
-| **API_REFERENCE.md** | BFF API endpoints with examples | 300+ |
-| **PHASE3_IMPLEMENTATION.md** | Coverage insights details | 400+ |
-| **SEQUENCE_COMPLIANCE.md** | Design compliance analysis | 200+ |
-| **QUICK_START.md** | 5-minute setup guide | 150+ |
+| Document                     | Purpose                               | Lines |
+| ---------------------------- | ------------------------------------- | ----- |
+| **README.md**                | Quick start & overview                | 250+  |
+| **ARCHITECTURE.md**          | Complete system architecture          | 800+  |
+| **DEPLOYMENT.md**            | Deployment guide (Local, Docker, K8s) | 500+  |
+| **API_REFERENCE.md**         | BFF API endpoints with examples       | 300+  |
+| **PHASE3_IMPLEMENTATION.md** | Coverage insights details             | 400+  |
+| **SEQUENCE_COMPLIANCE.md**   | Design compliance analysis            | 200+  |
+| **QUICK_START.md**           | 5-minute setup guide                  | 150+  |
 
 **Total Documentation**: **2,600+ lines** of comprehensive guides!
 
@@ -32,12 +33,14 @@
 ## 🎯 Key Features Implemented
 
 ### 1. **BFF (Backend for Frontend) Service** ⭐
+
 - Single entry point for all frontend requests
 - Request aggregation (1 call instead of 3-4)
 - Response optimization for frontend
 - JWT authentication at gateway level
 
 **Endpoints**:
+
 ```
 POST /api/bff/auth/register
 POST /api/bff/auth/login
@@ -47,6 +50,7 @@ POST /api/bff/upload
 ```
 
 ### 2. **Coverage Insights & Recommendations** 🔍
+
 - Gap analysis (current vs recommended coverage)
 - Severity levels (HIGH/MEDIUM/LOW)
 - Actionable recommendations with priorities
@@ -55,6 +59,7 @@ POST /api/bff/upload
 - Estimated premium calculations
 
 **Example Response**:
+
 ```json
 {
   "overallScore": { "score": 60, "rating": "GOOD" },
@@ -78,7 +83,9 @@ POST /api/bff/upload
 ```
 
 ### 3. **Unified Portfolio View** 📊
+
 Single API call returns:
+
 - Customer details
 - All policies
 - Total policies count
@@ -86,18 +93,21 @@ Single API call returns:
 - Total coverage amount
 
 ### 4. **Intelligent Customer Matching** 🎯
+
 - Fuzzy name matching (Levenshtein distance)
 - Exact matching on PAN/Email/Mobile
 - Automatic customer linking
 - Duplicate detection
 
 ### 5. **Metadata-Driven Transformation** 🔄
+
 - Flexible field mapping per insurer
 - JSONB storage for mapping rules
 - Support for multiple policy types
 - Easy addition of new insurers
 
 ### 6. **Security Features** 🔐
+
 - JWT authentication (24-hour expiration)
 - BCrypt password hashing
 - AES-256 PII encryption
@@ -109,18 +119,21 @@ Single API call returns:
 ## 📊 Architecture Highlights
 
 ### Microservices Pattern
+
 - Independent, scalable services
 - Service-to-service communication via Feign
 - Multiple database support (PostgreSQL + MongoDB)
 - RESTful APIs
 
 ### BFF Pattern
+
 - Reduces frontend complexity
 - Optimizes network calls
 - Centralizes authentication
 - Frontend-specific responses
 
 ### Data Flow
+
 ```
 User → BFF → [Multiple Services] → Aggregated Response
 ```
@@ -146,6 +159,7 @@ All three phases from your original API sequence diagram are fully implemented!
 **Commit**: Initial commit with complete microservices architecture
 
 **Files Uploaded**:
+
 - 221 files
 - 2.40 MB total size
 - All 7 services with complete code
@@ -158,11 +172,10 @@ All three phases from your original API sequence diagram are fully implemented!
 ## 🚀 Next Steps
 
 ### 1. **Local Testing**
+
 ```bash
-# Setup databases
-createdb mypolicy_customer_db
-createdb mypolicy_metadata_db
-createdb mypolicy_policy_db
+# Setup database - Single centralized database
+createdb mypolicy_db
 
 # Start services
 cd customer-service && mvn spring-boot:run
@@ -170,6 +183,7 @@ cd customer-service && mvn spring-boot:run
 ```
 
 ### 2. **End-to-End Testing**
+
 ```bash
 # Test complete flow
 curl -X POST http://localhost:8080/api/bff/auth/register -d '{...}'
@@ -179,6 +193,7 @@ curl -X GET http://localhost:8080/api/bff/insights/{customerId}
 ```
 
 ### 3. **Deployment**
+
 - Docker containerization
 - Kubernetes deployment
 - CI/CD pipeline setup
@@ -189,6 +204,7 @@ curl -X GET http://localhost:8080/api/bff/insights/{customerId}
 ## 📈 Project Statistics
 
 ### Code
+
 - **Services**: 7 microservices
 - **Controllers**: 12+ REST controllers
 - **Services**: 15+ business logic services
@@ -197,12 +213,14 @@ curl -X GET http://localhost:8080/api/bff/insights/{customerId}
 - **Entities**: 5 database entities
 
 ### Documentation
+
 - **Total Lines**: 2,600+ lines
 - **Documents**: 7 comprehensive guides
 - **Examples**: 50+ code examples
 - **Diagrams**: Architecture diagrams included
 
 ### Technology Stack
+
 - **Framework**: Spring Boot 3.1.5
 - **Language**: Java 17
 - **Databases**: PostgreSQL 14+, MongoDB 6.0+
@@ -215,6 +233,7 @@ curl -X GET http://localhost:8080/api/bff/insights/{customerId}
 You now have a **production-ready**, **fully-documented**, **100% compliant** microservices architecture for insurance policy aggregation!
 
 ### What Makes This Special:
+
 1. ✅ **Complete Implementation** - All features from sequence diagram
 2. ✅ **BFF Pattern** - Modern API gateway architecture
 3. ✅ **Comprehensive Docs** - 2,600+ lines of documentation

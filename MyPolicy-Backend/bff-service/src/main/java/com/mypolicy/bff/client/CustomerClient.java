@@ -17,4 +17,7 @@ public interface CustomerClient {
 
   @GetMapping("/api/v1/customers/{customerId}")
   CustomerDTO getCustomerById(@PathVariable("customerId") String customerId);
+
+  @PutMapping("/api/v1/customers/{customerId}")
+  CustomerDTO updateCustomer(@PathVariable("customerId") String customerId, @RequestBody Object request);
 }

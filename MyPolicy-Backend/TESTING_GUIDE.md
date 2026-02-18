@@ -9,18 +9,21 @@ Let's test the Customer Service first as it has minimal dependencies.
 ## Prerequisites Check
 
 ### 1. Verify Java Installation
+
 ```bash
 java --version
 # Should show: openjdk 17.0.18 or higher
 ```
 
 ### 2. Verify Maven Installation
+
 ```bash
 mvn --version
 # Should show: Apache Maven 3.8+
 ```
 
 ### 3. Verify PostgreSQL Installation
+
 ```bash
 psql --version
 # Should show: PostgreSQL 14+
@@ -33,12 +36,13 @@ psql --version
 ### Step 1: Create Database
 
 **Option A - Using psql command line:**
+
 ```bash
 # Connect to PostgreSQL
 psql -U postgres
 
-# Create database
-CREATE DATABASE mypolicy_customer_db;
+# Create single centralized database
+CREATE DATABASE mypolicy_db;
 
 # Verify
 \l
@@ -48,9 +52,10 @@ CREATE DATABASE mypolicy_customer_db;
 ```
 
 **Option B - Using pgAdmin:**
+
 1. Open pgAdmin
 2. Right-click "Databases" → "Create" → "Database"
-3. Name: `mypolicy_customer_db`
+3. Name: `mypolicy_db`
 4. Click "Save"
 
 **Option C - Let Spring Boot handle it (if using H2 for testing):**
@@ -72,12 +77,14 @@ spring.datasource.password=YOUR_POSTGRES_PASSWORD
 ### Step 3: Start Customer Service
 
 **Open Terminal/PowerShell:**
+
 ```bash
 cd "d:\New folder (2)\INSURANCE POLICY\MyPolicy-Backend\customer-service"
 mvn spring-boot:run
 ```
 
 **Expected Output:**
+
 ```
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -100,11 +107,13 @@ Started CustomerServiceApplication in X.XXX seconds
 **Open a new terminal and run these commands:**
 
 #### Test 1: Health Check
+
 ```bash
 curl http://localhost:8081/actuator/health
 ```
 
 **Expected Response:**
+
 ```json
 {
   "status": "UP"
@@ -112,6 +121,7 @@ curl http://localhost:8081/actuator/health
 ```
 
 #### Test 2: Register a Customer
+
 ```bash
 curl -X POST http://localhost:8081/api/v1/customers/register ^
   -H "Content-Type: application/json" ^
@@ -119,6 +129,7 @@ curl -X POST http://localhost:8081/api/v1/customers/register ^
 ```
 
 **Expected Response:**
+
 ```json
 {
   "customerId": "uuid-here",
@@ -130,6 +141,7 @@ curl -X POST http://localhost:8081/api/v1/customers/register ^
 ```
 
 #### Test 3: Login
+
 ```bash
 curl -X POST http://localhost:8081/api/v1/customers/login ^
   -H "Content-Type: application/json" ^
@@ -137,6 +149,7 @@ curl -X POST http://localhost:8081/api/v1/customers/login ^
 ```
 
 **Expected Response:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -149,6 +162,7 @@ curl -X POST http://localhost:8081/api/v1/customers/login ^
 ```
 
 #### Test 4: Get Customer (use customerId from registration)
+
 ```bash
 curl http://localhost:8081/api/v1/customers/{customerId}
 ```
@@ -192,6 +206,7 @@ spring.h2.console.enabled=true
 ```
 
 ### Step 3: Run with Test Profile
+
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=test
 ```
@@ -201,48 +216,56 @@ mvn spring-boot:run -Dspring-boot.run.profiles=test
 ## Option 3: Test Complete Flow (All Services)
 
 ### Prerequisites:
+
 1. PostgreSQL running with 3 databases created
 2. MongoDB running
 
 ### Start Services in Order:
 
 **Terminal 1 - Customer Service:**
+
 ```bash
 cd customer-service
 mvn spring-boot:run
 ```
 
 **Terminal 2 - Policy Service:**
+
 ```bash
 cd policy-service
 mvn spring-boot:run
 ```
 
 **Terminal 3 - Ingestion Service:**
+
 ```bash
 cd ingestion-service
 mvn spring-boot:run
 ```
 
 **Terminal 4 - Metadata Service:**
+
 ```bash
 cd metadata-service
 mvn spring-boot:run
 ```
 
 **Terminal 5 - Processing Service:**
+
 ```bash
 cd processing-service
 mvn spring-boot:run
 ```
 
 **Terminal 6 - Matching Engine:**
+
 ```bash
 cd matching-engine
 mvn spring-boot:run
 ```
 
 **Terminal 7 - BFF Service:**
+
 ```bash
 cd bff-service
 mvn spring-boot:run
@@ -272,6 +295,7 @@ curl -X GET http://localhost:8080/api/bff/portfolio/{customerId} ^
 ## Troubleshooting
 
 ### Issue 1: Port Already in Use
+
 ```bash
 # Windows - Find process on port 8081
 netstat -ano | findstr :8081
@@ -281,22 +305,26 @@ taskkill /PID <PID> /F
 ```
 
 ### Issue 2: Database Connection Failed
+
 ```
 Error: Connection refused
 ```
 
 **Solution:**
+
 - Verify PostgreSQL is running: `pg_ctl status`
 - Check credentials in application.properties
 - Ensure database exists: `psql -U postgres -l`
 
 ### Issue 3: Maven Build Failed
+
 ```bash
 # Clean and rebuild
 mvn clean install -DskipTests
 ```
 
 ### Issue 4: Java Version Mismatch
+
 ```bash
 # Check Java version
 java --version
@@ -337,6 +365,7 @@ Write-Host $loginResponse
 ```
 
 Run:
+
 ```bash
 .\test-customer-service.ps1
 ```
@@ -345,15 +374,15 @@ Run:
 
 ## Expected Service Startup Times
 
-| Service | Startup Time | Port |
-|---------|-------------|------|
-| Customer | ~10-15 sec | 8081 |
-| Policy | ~10-15 sec | 8085 |
-| Ingestion | ~8-12 sec | 8082 |
-| Metadata | ~10-15 sec | 8083 |
-| Processing | ~8-12 sec | 8084 |
-| Matching | ~8-12 sec | 8086 |
-| BFF | ~12-18 sec | 8080 |
+| Service    | Startup Time | Port |
+| ---------- | ------------ | ---- |
+| Customer   | ~10-15 sec   | 8081 |
+| Policy     | ~10-15 sec   | 8085 |
+| Ingestion  | ~8-12 sec    | 8082 |
+| Metadata   | ~10-15 sec   | 8083 |
+| Processing | ~8-12 sec    | 8084 |
+| Matching   | ~8-12 sec    | 8086 |
+| BFF        | ~12-18 sec   | 8080 |
 
 ---
 
@@ -371,6 +400,7 @@ Run:
 ## Next Steps
 
 After successful testing:
+
 1. ✅ Configure production database credentials
 2. ✅ Set up environment variables
 3. ✅ Deploy to Docker containers

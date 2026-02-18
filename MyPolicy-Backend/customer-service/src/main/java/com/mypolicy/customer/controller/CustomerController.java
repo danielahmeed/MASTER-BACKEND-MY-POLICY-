@@ -3,6 +3,7 @@ package com.mypolicy.customer.controller;
 import com.mypolicy.customer.dto.AuthResponse;
 import com.mypolicy.customer.dto.CustomerRegistrationRequest;
 import com.mypolicy.customer.dto.CustomerResponse;
+import com.mypolicy.customer.dto.CustomerUpdateRequest;
 import com.mypolicy.customer.dto.LoginRequest;
 import com.mypolicy.customer.service.CustomerService;
 import jakarta.validation.Valid;
@@ -32,5 +33,12 @@ public class CustomerController {
   @GetMapping("/{customerId}")
   public ResponseEntity<CustomerResponse> getCustomer(@PathVariable String customerId) {
     return ResponseEntity.ok(customerService.getCustomerById(customerId));
+  }
+
+  @PutMapping("/{customerId}")
+  public ResponseEntity<CustomerResponse> updateCustomer(
+      @PathVariable String customerId,
+      @Valid @RequestBody CustomerUpdateRequest request) {
+    return ResponseEntity.ok(customerService.updateCustomer(customerId, request));
   }
 }

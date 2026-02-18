@@ -2,6 +2,7 @@ package com.mypolicy.customer.service.impl;
 
 import com.mypolicy.customer.dto.CustomerRegistrationRequest;
 import com.mypolicy.customer.dto.CustomerResponse;
+import com.mypolicy.customer.dto.CustomerUpdateRequest;
 import com.mypolicy.customer.dto.LoginRequest;
 import com.mypolicy.customer.model.Customer;
 import com.mypolicy.customer.model.CustomerStatus;
@@ -64,6 +65,63 @@ public class CustomerServiceImpl implements CustomerService {
     return customerRepository.findById(customerId)
         .map(this::mapToResponse)
         .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+  }
+
+  @Override
+  @Transactional
+  public CustomerResponse updateCustomer(String customerId, CustomerUpdateRequest request) {
+    Customer customer = customerRepository.findById(customerId)
+        .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+
+    // Update only non-null fields
+    if (request.getFirstName() != null && !request.getFirstName().isEmpty()) {
+      customer.setFirstName(request.getFirstName());
+    }
+
+    if (request.getLastName() != null && !request.getLastName().isEmpty()) {
+      customer.setLastName(request.getLastName());
+    }
+
+    if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+      // Check if new email is already taken by another customer
+      customerRepository.findByEmail(request.getEmail()).ifPresent(existing -> {
+        if (!existing.getCustomerId().equals(customerId)) {
+          throw new RuntimeException("Email already exists for another customer");
+        }
+      });
+      customer.setEmail(request.getEmail());
+    }
+
+    if (request.getMobileNumber() != null && !request.getMobileNumber().isEmpty()) {
+      // Check if new mobile is already taken by another customer
+      customerRepository.findByMobileNumber(request.getMobileNumber()).ifPresent(existing -> {
+        if (!existing.getCustomerId().equals(customerId)) {
+          throw new RuntimeException("Mobile number already exists for another customer");
+        }
+      });
+      customer.setMobileNumber(request.getMobileNumber());
+    }
+
+    if (request.getPanNumber() != null && !request.getPanNumber().isEmpty()) {
+      // Check if new PAN is already taken by another customer
+      customerRepository.findByPanNumber(request.getPanNumber()).ifPresent(existing -> {
+        if (!existing.getCustomerId().equals(customerId)) {
+          throw new RuntimeException("PAN number already exists for another customer");
+        }
+      });
+      customer.setPanNumber(request.getPanNumber());
+    }
+
+    if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
+      customer.setDateOfBirth(request.getDateOfBirth());
+    }
+
+    if (request.getAddress() != null && !request.getAddress().isEmpty()) {
+      customer.setAddress(request.getAddress());
+    }
+
+    Customer updated = customerRepository.save(customer);
+    return mapToResponse(updated);
   }
 
   private CustomerResponse mapToResponse(Customer c) {
