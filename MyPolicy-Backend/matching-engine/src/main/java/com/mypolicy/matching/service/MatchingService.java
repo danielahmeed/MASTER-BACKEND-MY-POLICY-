@@ -9,7 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,36 +30,42 @@ public class MatchingService {
    * 2. Create policy linked to customer
    */
   public void processAndMatchPolicy(Map<String, Object> standardRecord) {
-    log.info("Processing policy record: {}", standardRecord);
-
-    // Extract customer identifiers
-    String mobileNumber = (String) standardRecord.get("mobileNumber");
-    String email = (String) standardRecord.get("email");
-    String panNumber = (String) standardRecord.get("panNumber");
+    // 1. Extract PII from the standardized Map
     String firstName = (String) standardRecord.get("firstName");
     String lastName = (String) standardRecord.get("lastName");
+    String mobile = (String) standardRecord.get("mobileNumber");
+    String policyNum = (String) standardRecord.get("policyNumber");
 
-    // TODO: In production, query Customer Service with search criteria
-    // For now, assume we have a customerId (from manual registration or fuzzy
-    // match)
-    String customerId = findOrCreateCustomer(firstName, lastName, email, mobileNumber, panNumber);
+    // 2. SEARCH: Look for existing customer by Mobile
+    // Note: You'll need to update CustomerClient to include searchByMobile
+    Optional<CustomerDTO> customerOpt = customerClient.searchByMobile(mobile);
 
-    // Create Policy DTO
-    PolicyDTO policyDTO = new PolicyDTO();
-    policyDTO.setCustomerId(customerId);
-    policyDTO.setInsurerId((String) standardRecord.get("insurerId"));
-    policyDTO.setPolicyNumber((String) standardRecord.get("policyNumber"));
-    policyDTO.setPolicyType((String) standardRecord.get("policyType"));
-    policyDTO.setPlanName((String) standardRecord.get("planName"));
-    policyDTO.setPremiumAmount((java.math.BigDecimal) standardRecord.get("premiumAmount"));
-    policyDTO.setSumAssured((java.math.BigDecimal) standardRecord.get("sumAssured"));
-    policyDTO.setStartDate((java.time.LocalDate) standardRecord.get("startDate"));
-    policyDTO.setEndDate((java.time.LocalDate) standardRecord.get("endDate"));
-    policyDTO.setStatus((String) standardRecord.getOrDefault("status", "ACTIVE"));
+    String resolvedCustomerId = null;
 
-    // Save Policy
-    PolicyDTO createdPolicy = policyClient.createPolicy(policyDTO);
-    log.info("Policy created successfully: {}", createdPolicy);
+    if (customerOpt.isPresent()) {
+      CustomerDTO masterRecord = customerOpt.get();
+      String fullNameCsv = (firstName + " " + lastName).toLowerCase();
+      String fullNameDb = (masterRecord.getFirstName() + " " + masterRecord.getLastName()).toLowerCase();
+
+      // 3. VERIFY: Use Fuzzy Matching to confirm identity
+      if (isSimilar(fullNameCsv, fullNameDb)) {
+        resolvedCustomerId = masterRecord.getCustomerId();
+        log.info("Identity Stitched! Found match for {} -> {}", fullNameCsv, resolvedCustomerId);
+      }
+    }
+
+    // 4. CREATE: If matched, stitch the policy to the Customer ID
+    if (resolvedCustomerId != null) {
+      PolicyDTO policyDto = new PolicyDTO();
+      policyDto.setPolicyNumber(policyNum);
+      policyDto.setCustomerId(resolvedCustomerId); // The "Stitch" happens here
+      policyDto.setPremiumAmount((BigDecimal) standardRecord.get("premiumAmount"));
+
+      policyClient.createPolicy(policyDto);
+      log.info("Policy {} successfully stitched to Customer {}", policyNum, resolvedCustomerId);
+    } else {
+      log.warn("No match found for policy {}. Routing to manual review.", policyNum);
+    }
   }
 
   /**
