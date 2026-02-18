@@ -1,6 +1,7 @@
 # MyPolicy System - Complete Architecture Documentation
 
 ## 📋 Table of Contents
+
 1. [System Overview](#system-overview)
 2. [Architecture Diagram](#architecture-diagram)
 3. [Service Details](#service-details)
@@ -15,6 +16,7 @@
 ## System Overview
 
 **MyPolicy** is a comprehensive insurance policy aggregation platform that allows users to:
+
 - Upload insurance policies from multiple insurers
 - View all policies in a unified dashboard
 - Get intelligent coverage insights and recommendations
@@ -22,6 +24,7 @@
 - Receive personalized advisory
 
 ### Key Features
+
 ✅ Multi-insurer policy aggregation
 ✅ Automated data processing with metadata-driven transformation
 ✅ Intelligent customer matching with fuzzy logic
@@ -95,6 +98,7 @@
 **Purpose**: API Gateway and request aggregator for frontend applications
 
 **Responsibilities**:
+
 - Single entry point for all frontend requests
 - Request aggregation (combine multiple service calls)
 - Response transformation (frontend-optimized format)
@@ -102,6 +106,7 @@
 - Error handling and fallback
 
 **Key Endpoints**:
+
 ```
 POST   /api/bff/auth/register          - User registration
 POST   /api/bff/auth/login             - Authentication & JWT
@@ -112,6 +117,7 @@ GET    /api/bff/upload/status/{jobId}  - Upload status
 ```
 
 **Technology Stack**:
+
 - Spring Boot 3.1.5
 - Spring Cloud OpenFeign
 - Spring Security
@@ -124,15 +130,17 @@ GET    /api/bff/upload/status/{jobId}  - Upload status
 **Purpose**: User management and authentication
 
 **Responsibilities**:
+
 - Customer registration with PII encryption
 - JWT-based authentication
 - Password hashing (BCrypt)
 - Customer profile management
 - Customer search and retrieval
 
-**Database**: PostgreSQL (`mypolicy_customer_db`)
+**Database**: PostgreSQL (`mypolicy_db` - centralized)
 
 **Schema**:
+
 ```sql
 CREATE TABLE customers (
     customer_id UUID PRIMARY KEY,
@@ -151,6 +159,7 @@ CREATE TABLE customers (
 ```
 
 **Key Features**:
+
 - AES-256 encryption for PII
 - BCrypt password hashing
 - JWT token generation
@@ -163,6 +172,7 @@ CREATE TABLE customers (
 **Purpose**: Handle file uploads from insurers
 
 **Responsibilities**:
+
 - Accept Excel/CSV file uploads
 - Create ingestion jobs
 - Track processing status
@@ -172,6 +182,7 @@ CREATE TABLE customers (
 **Database**: MongoDB (`mypolicy_ingestion_db`)
 
 **Schema**:
+
 ```javascript
 {
   _id: ObjectId,
@@ -197,6 +208,7 @@ CREATE TABLE customers (
 ```
 
 **Supported Formats**:
+
 - Excel (.xlsx, .xls)
 - CSV (.csv)
 
@@ -207,6 +219,7 @@ CREATE TABLE customers (
 **Purpose**: Store and manage field mapping rules for different insurers
 
 **Responsibilities**:
+
 - Store insurer-specific field mappings
 - Manage policy type configurations
 - Provide mapping rules to Processing Service
@@ -215,6 +228,7 @@ CREATE TABLE customers (
 **Database**: PostgreSQL (`mypolicy_metadata_db`)
 
 **Schema**:
+
 ```sql
 CREATE TABLE insurer_configurations (
     config_id UUID PRIMARY KEY,
@@ -227,6 +241,7 @@ CREATE TABLE insurer_configurations (
 ```
 
 **Field Mapping Structure**:
+
 ```json
 {
   "TERM_LIFE": [
@@ -255,6 +270,7 @@ CREATE TABLE insurer_configurations (
 **Purpose**: Read uploaded files, apply metadata rules, and standardize data
 
 **Responsibilities**:
+
 - Fetch metadata rules from Metadata Service
 - Read Excel/CSV files using Apache POI
 - Transform data using field mappings
@@ -262,11 +278,13 @@ CREATE TABLE insurer_configurations (
 - Send standardized records to Matching Engine
 
 **Technology Stack**:
+
 - Spring Boot 3.1.5
 - Apache POI (Excel processing)
 - Spring Cloud OpenFeign
 
 **Processing Flow**:
+
 ```
 1. Receive file path, insurerId, policyType
 2. Call Metadata Service → Get field mappings
@@ -284,6 +302,7 @@ CREATE TABLE insurer_configurations (
 **Purpose**: Store and manage insurance policies
 
 **Responsibilities**:
+
 - Policy creation and storage
 - Link policies to customers
 - Policy retrieval by customer
@@ -293,6 +312,7 @@ CREATE TABLE insurer_configurations (
 **Database**: PostgreSQL (`mypolicy_policy_db`)
 
 **Schema**:
+
 ```sql
 CREATE TABLE policies (
     id UUID PRIMARY KEY,
@@ -321,6 +341,7 @@ CREATE INDEX idx_policy_number ON policies(policy_number);
 **Purpose**: Match processed policy data with existing customers using fuzzy logic
 
 **Responsibilities**:
+
 - Customer search and matching
 - Fuzzy name matching (Levenshtein distance)
 - Exact matching on PAN/Email/Mobile
@@ -328,11 +349,13 @@ CREATE INDEX idx_policy_number ON policies(policy_number);
 - Handle duplicate detection
 
 **Technology Stack**:
+
 - Spring Boot 3.1.5
 - Apache Commons Text (Levenshtein distance)
 - Spring Cloud OpenFeign
 
 **Matching Algorithm**:
+
 ```
 1. Receive standardized policy record
 2. Extract customer identifiers (name, mobile, email, PAN)
@@ -351,6 +374,7 @@ CREATE INDEX idx_policy_number ON policies(policy_number);
 ## Data Flow
 
 ### Flow 1: User Registration
+
 ```
 User → BFF → Customer Service → PostgreSQL
                 ↓
@@ -360,6 +384,7 @@ User → BFF → Customer Service → PostgreSQL
 ```
 
 ### Flow 2: User Login
+
 ```
 User → BFF → Customer Service
                 ↓
@@ -371,6 +396,7 @@ User → BFF → Customer Service
 ```
 
 ### Flow 3: Portfolio View (Aggregation)
+
 ```
 User → BFF
         ↓
@@ -386,6 +412,7 @@ User → BFF
 ```
 
 ### Flow 4: Coverage Insights
+
 ```
 User → BFF → InsightsService
                 ↓
@@ -405,6 +432,7 @@ User → BFF → InsightsService
 ```
 
 ### Flow 5: File Upload & Processing (Complete Pipeline)
+
 ```
 User → BFF → Ingestion Service
                 ↓
@@ -436,28 +464,33 @@ User → BFF → Ingestion Service
 ### BFF Service (Port 8080)
 
 #### Authentication
+
 ```http
 POST /api/bff/auth/register
 POST /api/bff/auth/login
 ```
 
 #### Portfolio
+
 ```http
 GET /api/bff/portfolio/{customerId}
 ```
 
 #### Insights
+
 ```http
 GET /api/bff/insights/{customerId}
 ```
 
 #### File Upload
+
 ```http
 POST /api/bff/upload
 GET /api/bff/upload/status/{jobId}
 ```
 
 ### Customer Service (Port 8081)
+
 ```http
 POST /api/v1/customers/register
 POST /api/v1/customers/login
@@ -465,23 +498,27 @@ GET  /api/v1/customers/{customerId}
 ```
 
 ### Ingestion Service (Port 8082)
+
 ```http
 POST /api/v1/ingestion/upload
 GET  /api/v1/ingestion/status/{jobId}
 ```
 
 ### Metadata Service (Port 8083)
+
 ```http
 POST /api/v1/metadata/config
 GET  /api/v1/metadata/config/{insurerId}
 ```
 
 ### Processing Service (Port 8084)
+
 ```http
 POST /api/v1/processing/trigger
 ```
 
 ### Policy Service (Port 8085)
+
 ```http
 POST /api/v1/policies
 GET  /api/v1/policies/customer/{customerId}
@@ -492,9 +529,12 @@ GET  /api/v1/policies/{id}
 
 ## Database Schema
 
-### PostgreSQL Databases
+### PostgreSQL - Centralized Database (mypolicy_db)
 
-#### 1. mypolicy_customer_db
+All services use a single PostgreSQL database with separate tables:
+
+#### Customers Table (Customer Service)
+
 ```sql
 -- Customers table
 CREATE TABLE customers (
@@ -517,7 +557,8 @@ CREATE INDEX idx_mobile ON customers(mobile_number);
 CREATE INDEX idx_pan ON customers(pan_number);
 ```
 
-#### 2. mypolicy_metadata_db
+#### Insurer Configurations Table (Metadata Service)
+
 ```sql
 -- Insurer configurations table
 CREATE TABLE insurer_configurations (
@@ -532,7 +573,8 @@ CREATE TABLE insurer_configurations (
 CREATE INDEX idx_insurer_id ON insurer_configurations(insurer_id);
 ```
 
-#### 3. mypolicy_policy_db
+#### Policies Table (Policy Service)
+
 ```sql
 -- Policies table
 CREATE TABLE policies (
@@ -559,6 +601,7 @@ CREATE INDEX idx_insurer_id ON policies(insurer_id);
 ### MongoDB Database
 
 #### mypolicy_ingestion_db
+
 ```javascript
 // Collection: ingestion_jobs
 {
@@ -594,6 +637,7 @@ db.ingestion_jobs.createIndex({ status: 1 })
 ## Deployment Guide
 
 ### Prerequisites
+
 - Java 17+
 - Maven 3.8+
 - PostgreSQL 14+
@@ -602,20 +646,18 @@ db.ingestion_jobs.createIndex({ status: 1 })
 ### Database Setup
 
 #### PostgreSQL
+
 ```bash
-# Create databases
-createdb mypolicy_customer_db
-createdb mypolicy_metadata_db
-createdb mypolicy_policy_db
+# Create single centralized database
+createdb mypolicy_db
 
 # Create user (optional)
 psql -c "CREATE USER mypolicy WITH PASSWORD 'password';"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_customer_db TO mypolicy;"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_metadata_db TO mypolicy;"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_policy_db TO mypolicy;"
+psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_db TO mypolicy;"
 ```
 
 #### MongoDB
+
 ```bash
 # Start MongoDB
 mongod --dbpath /data/db
@@ -643,6 +685,7 @@ cd bff-service && mvn spring-boot:run &
 ```
 
 ### Verify Services
+
 ```bash
 # Check all services are running
 curl http://localhost:8080/actuator/health  # BFF
@@ -659,6 +702,7 @@ curl http://localhost:8086/actuator/health  # Matching
 ## Testing Guide
 
 ### 1. Register a User
+
 ```bash
 curl -X POST http://localhost:8080/api/bff/auth/register \
   -H "Content-Type: application/json" \
@@ -675,6 +719,7 @@ curl -X POST http://localhost:8080/api/bff/auth/register \
 ```
 
 ### 2. Login
+
 ```bash
 curl -X POST http://localhost:8080/api/bff/auth/login \
   -H "Content-Type: application/json" \
@@ -688,6 +733,7 @@ export JWT_TOKEN="<token_from_response>"
 ```
 
 ### 3. Configure Metadata
+
 ```bash
 curl -X POST "http://localhost:8083/api/v1/metadata/config?insurerId=HDFC_LIFE&insurerName=HDFC Life" \
   -H "Content-Type: application/json" \
@@ -722,6 +768,7 @@ curl -X POST "http://localhost:8083/api/v1/metadata/config?insurerId=HDFC_LIFE&i
 ```
 
 ### 4. Upload File
+
 ```bash
 curl -X POST http://localhost:8080/api/bff/upload \
   -H "Authorization: Bearer $JWT_TOKEN" \
@@ -731,12 +778,14 @@ curl -X POST http://localhost:8080/api/bff/upload \
 ```
 
 ### 5. Get Portfolio
+
 ```bash
 curl -X GET "http://localhost:8080/api/bff/portfolio/<customer_id>" \
   -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### 6. Get Coverage Insights
+
 ```bash
 curl -X GET "http://localhost:8080/api/bff/insights/<customer_id>" \
   -H "Authorization: Bearer $JWT_TOKEN"
@@ -747,21 +796,25 @@ curl -X GET "http://localhost:8080/api/bff/insights/<customer_id>" \
 ## Security Considerations
 
 ### 1. Authentication
+
 - JWT tokens with 24-hour expiration
 - BCrypt password hashing (strength: 10)
 - Secure token storage on client side
 
 ### 2. Data Encryption
+
 - PII fields encrypted at rest (AES-256)
 - HTTPS for all communications
 - Database connection encryption
 
 ### 3. Authorization
+
 - Role-based access control (future)
 - Customer can only access own data
 - Admin endpoints protected
 
 ### 4. Input Validation
+
 - Request validation at BFF layer
 - SQL injection prevention (JPA)
 - File upload size limits
@@ -772,17 +825,20 @@ curl -X GET "http://localhost:8080/api/bff/insights/<customer_id>" \
 ## Monitoring & Logging
 
 ### Application Logs
+
 ```
 logging.level.com.mypolicy=DEBUG
 ```
 
 ### Health Checks
+
 ```
 GET /actuator/health
 GET /actuator/info
 ```
 
 ### Metrics (Future)
+
 - Prometheus integration
 - Grafana dashboards
 - Request rate monitoring
@@ -808,6 +864,7 @@ GET /actuator/info
 ## Support
 
 For issues or questions:
+
 - Email: support@mypolicy.com
 - Documentation: /docs
 - API Reference: /api-docs

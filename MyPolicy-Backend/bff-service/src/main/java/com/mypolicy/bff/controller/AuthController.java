@@ -24,4 +24,11 @@ public class AuthController {
   public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
     return ResponseEntity.ok(customerClient.login(request));
   }
+
+  @PutMapping("/customer/{customerId}")
+  public ResponseEntity<CustomerDTO> updateCustomer(
+      @PathVariable String customerId,
+      @RequestBody Object request) {
+    return ResponseEntity.ok(customerClient.updateCustomer(customerId, request));
+  }
 }

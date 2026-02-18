@@ -12,23 +12,24 @@
 ## 🎯 Quick Start
 
 ### Prerequisites
+
 - Java 17+
 - Maven 3.8+
 - PostgreSQL 14+
 - MongoDB 6.0+
 
 ### Setup Databases
+
 ```bash
-# PostgreSQL
-createdb mypolicy_customer_db
-createdb mypolicy_metadata_db
-createdb mypolicy_policy_db
+# PostgreSQL - Single centralized database
+createdb mypolicy_db
 
 # MongoDB (auto-created on first use)
 mongod --dbpath /data/db
 ```
 
 ### Start Services
+
 ```bash
 # Start all services in order
 cd customer-service && mvn spring-boot:run &
@@ -41,6 +42,7 @@ cd bff-service && mvn spring-boot:run &
 ```
 
 ### Test the System
+
 ```bash
 # Register user
 curl -X POST http://localhost:8080/api/bff/auth/register \
@@ -67,21 +69,22 @@ Frontend → BFF Service (8080) → [Customer, Policy, Ingestion, Metadata]
 
 ### Services Overview
 
-| Service | Port | Purpose | Database |
-|---------|------|---------|----------|
-| **BFF Service** | 8080 | API Gateway & Aggregator | - |
-| Customer Service | 8081 | User Management & Auth | PostgreSQL |
-| Ingestion Service | 8082 | File Upload Handling | MongoDB |
-| Metadata Service | 8083 | Field Mapping Rules | PostgreSQL |
-| Processing Service | 8084 | Data Transformation | - |
-| Policy Service | 8085 | Policy Storage | PostgreSQL |
-| Matching Engine | 8086 | Customer Matching | - |
+| Service            | Port | Purpose                  | Database   |
+| ------------------ | ---- | ------------------------ | ---------- |
+| **BFF Service**    | 8080 | API Gateway & Aggregator | -          |
+| Customer Service   | 8081 | User Management & Auth   | PostgreSQL |
+| Ingestion Service  | 8082 | File Upload Handling     | MongoDB    |
+| Metadata Service   | 8083 | Field Mapping Rules      | PostgreSQL |
+| Processing Service | 8084 | Data Transformation      | -          |
+| Policy Service     | 8085 | Policy Storage           | PostgreSQL |
+| Matching Engine    | 8086 | Customer Matching        | -          |
 
 ---
 
 ## 🚀 Key Features
 
 ### 1. **Unified Portfolio View**
+
 Single API call to get complete customer portfolio with all policies and totals.
 
 ```http
@@ -91,6 +94,7 @@ GET /api/bff/portfolio/{customerId}
 **Response**: Customer details + All policies + Aggregated totals
 
 ### 2. **Coverage Insights & Recommendations** ⭐
+
 AI-powered coverage gap analysis with personalized recommendations.
 
 ```http
@@ -98,6 +102,7 @@ GET /api/bff/insights/{customerId}
 ```
 
 **Features**:
+
 - Coverage breakdown by policy type
 - Gap analysis (current vs recommended)
 - Severity levels (HIGH/MEDIUM/LOW)
@@ -106,6 +111,7 @@ GET /api/bff/insights/{customerId}
 - Human-readable advisory
 
 ### 3. **Multi-Insurer File Upload**
+
 Upload Excel/CSV files from any insurer with automatic data transformation.
 
 ```http
@@ -113,12 +119,14 @@ POST /api/bff/upload
 ```
 
 **Features**:
+
 - Metadata-driven field mapping
 - Automatic data validation
 - Fuzzy customer matching
 - Job tracking
 
 ### 4. **Secure Authentication**
+
 JWT-based authentication with PII encryption.
 
 ```http
@@ -129,14 +137,14 @@ POST /api/bff/auth/login
 
 ## 📖 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Complete system architecture and design |
-| [API_REFERENCE.md](./bff-service/API_REFERENCE.md) | BFF API endpoints with examples |
-| [SEQUENCE_DIAGRAMS.md](./SEQUENCE_DIAGRAMS.md) | Complete API sequence diagrams |
+| Document                                               | Description                                      |
+| ------------------------------------------------------ | ------------------------------------------------ |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                   | Complete system architecture and design          |
+| [API_REFERENCE.md](./bff-service/API_REFERENCE.md)     | BFF API endpoints with examples                  |
+| [SEQUENCE_DIAGRAMS.md](./SEQUENCE_DIAGRAMS.md)         | Complete API sequence diagrams                   |
 | [COMPLETE_API_SEQUENCE.md](./COMPLETE_API_SEQUENCE.md) | Master sequence diagram - All services connected |
-| [PHASE3_IMPLEMENTATION.md](./PHASE3_IMPLEMENTATION.md) | Coverage insights implementation details |
-| [SEQUENCE_COMPLIANCE.md](./SEQUENCE_COMPLIANCE.md) | API sequence diagram compliance |
+| [PHASE3_IMPLEMENTATION.md](./PHASE3_IMPLEMENTATION.md) | Coverage insights implementation details         |
+| [SEQUENCE_COMPLIANCE.md](./SEQUENCE_COMPLIANCE.md)     | API sequence diagram compliance                  |
 
 ---
 
@@ -151,6 +159,7 @@ The system implements comprehensive end-to-end flows with all 7 microservices in
 Our architecture follows a detailed sequence diagram showing all service interactions:
 
 **Key Flows Covered:**
+
 1. **User Registration & Authentication** - Customer Service with JWT generation
 2. **Metadata Configuration** - Admin setup for insurer field mappings
 3. **File Upload & Ingestion** - Async file processing with job tracking
@@ -161,6 +170,7 @@ Our architecture follows a detailed sequence diagram showing all service interac
 8. **Coverage Insights** - Gap analysis and recommendations
 
 **Visual Diagrams Available:**
+
 - [SEQUENCE_DIAGRAMS.md](./SEQUENCE_DIAGRAMS.md) - Individual flow diagrams (6 detailed sequences)
 - [COMPLETE_API_SEQUENCE.md](./COMPLETE_API_SEQUENCE.md) - Master diagram with all services
 - Includes service-to-service communication patterns
@@ -168,6 +178,7 @@ Our architecture follows a detailed sequence diagram showing all service interac
 - Displays async processing flows
 
 **Service Communication Pattern:**
+
 ```
 Frontend → BFF (8080) → [Customer (8081), Policy (8085), Ingestion (8082)]
                               ↓
@@ -177,6 +188,7 @@ Frontend → BFF (8080) → [Customer (8081), Policy (8085), Ingestion (8082)]
 ```
 
 **Key Sequence Highlights:**
+
 - ✅ JWT authentication flow with token validation
 - ✅ File upload with progress tracking (NEW: PATCH endpoints for status updates)
 - ✅ Async processing pipeline with metadata transformation
@@ -192,6 +204,7 @@ Frontend → BFF (8080) → [Customer (8081), Policy (8085), Ingestion (8082)]
 ## 🔄 Data Flow
 
 ### User Registration → Login → Portfolio View
+
 ```
 1. User registers → Customer Service → JWT token
 2. User logs in → BFF validates → JWT token
@@ -200,6 +213,7 @@ Frontend → BFF (8080) → [Customer (8081), Policy (8085), Ingestion (8082)]
 ```
 
 ### File Upload → Processing → Matching
+
 ```
 1. User uploads file → Ingestion Service → MongoDB
 2. Processing Service → Reads file → Applies metadata rules
@@ -212,12 +226,14 @@ Frontend → BFF (8080) → [Customer (8081), Policy (8085), Ingestion (8082)]
 ## 🎨 API Examples
 
 ### Get Portfolio (Aggregated)
+
 ```bash
 curl -X GET "http://localhost:8080/api/bff/portfolio/CUST123" \
   -H "Authorization: Bearer <JWT>"
 ```
 
 **Response**:
+
 ```json
 {
   "customer": { "customerId": "CUST123", "firstName": "John", ... },
@@ -229,12 +245,14 @@ curl -X GET "http://localhost:8080/api/bff/portfolio/CUST123" \
 ```
 
 ### Get Coverage Insights
+
 ```bash
 curl -X GET "http://localhost:8080/api/bff/insights/CUST123" \
   -H "Authorization: Bearer <JWT>"
 ```
 
 **Response**:
+
 ```json
 {
   "overallScore": { "score": 60, "rating": "GOOD" },
@@ -273,6 +291,7 @@ curl -X GET "http://localhost:8080/api/bff/insights/CUST123" \
 ## 🧪 Testing
 
 ### End-to-End Test Flow
+
 ```bash
 # 1. Register
 curl -X POST http://localhost:8080/api/bff/auth/register -d '{...}'
@@ -298,15 +317,18 @@ curl -X GET http://localhost:8080/api/bff/insights/CUST123
 ## 📦 Technology Stack
 
 ### Backend
+
 - **Framework**: Spring Boot 3.1.5
 - **Language**: Java 17
 - **Build Tool**: Maven 3.8+
 
 ### Databases
+
 - **PostgreSQL 14+**: Customer, Metadata, Policy data
 - **MongoDB 6.0+**: Ingestion job tracking
 
 ### Libraries
+
 - **Spring Cloud OpenFeign**: Inter-service communication
 - **Spring Security + JWT**: Authentication
 - **Apache POI**: Excel processing
@@ -378,6 +400,7 @@ This project is licensed under the MIT License.
 ## 📧 Support
 
 For issues or questions:
+
 - **Email**: support@mypolicy.com
 - **Documentation**: [ARCHITECTURE.md](./ARCHITECTURE.md)
 - **API Docs**: [API_REFERENCE.md](./bff-service/API_REFERENCE.md)
