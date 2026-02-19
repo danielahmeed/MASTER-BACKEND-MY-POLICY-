@@ -144,7 +144,7 @@ POST /api/bff/upload
 
 ### 4. **Secure Authentication**
 
-JWT-based authentication with PII encryption.
+AEC-256 authentication with PII encryption.
 
 ```http
 POST /api/bff/auth/login
