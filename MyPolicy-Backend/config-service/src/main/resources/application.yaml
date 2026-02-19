@@ -1,0 +1,65 @@
+# ============================================
+# Configuration Service - Server Settings
+# ============================================
+
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-service
+
+  # ============================================
+  # Config Server - File System Backend
+  # ============================================
+  # Using file system for local development
+  # For production, use Git: spring.cloud.config.server.git.uri=https://github.com/yourorg/config-repo
+  cloud:
+    config:
+      server:
+        native:
+          search-locations:
+            - classpath:/config-repo
+            - file:./config-repo
+        # Support both YAML and Properties formats
+        default-label: master
+
+  profiles:
+    active: native
+
+  # ============================================
+  # Security Configuration
+  # ============================================
+  # Basic authentication for config endpoints
+  security:
+    user:
+      name: admin
+      password: config123
+
+# ============================================
+# Actuator Endpoints
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh,env
+  endpoint:
+    health:
+      show-details: always
+
+# ============================================
+# Logging
+# ============================================
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG
+    com.mypolicy.config: INFO
+
+# ============================================
+# Server Configuration
+# ============================================
+# IMPORTANT: Config Server must start BEFORE other services
+# Startup order:
+#   1. Config Service (8888)
+#   2. All other services (fetch config from 8888)

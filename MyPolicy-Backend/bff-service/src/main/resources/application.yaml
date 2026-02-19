@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bff-service
+
+# Service URLs
+customer:
+  service:
+    url: http://localhost:8081
+
+policy:
+  service:
+    url: http://localhost:8085
+
+# Data Pipeline Service (Consolidated: Ingestion + Metadata + Processing + Matching)
+data-pipeline:
+  service:
+    url: http://localhost:8082
+
+ingestion:
+  service:
+    url: http://localhost:8082
+
+metadata:
+  service:
+    url: http://localhost:8082
+
+processing:
+  service:
+    url: http://localhost:8082
+
+# Feign Configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+
+# Logging
+logging:
+  level:
+    com.mypolicy.bff: DEBUG

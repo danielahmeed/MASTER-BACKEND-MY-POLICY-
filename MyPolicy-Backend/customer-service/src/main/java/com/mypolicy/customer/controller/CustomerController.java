@@ -4,6 +4,7 @@ import com.mypolicy.customer.dto.AuthResponse;
 import com.mypolicy.customer.dto.CustomerCorrectionRequest;
 import com.mypolicy.customer.dto.CustomerRegistrationRequest;
 import com.mypolicy.customer.dto.CustomerResponse;
+import com.mypolicy.customer.dto.CustomerUpdateRequest;
 import com.mypolicy.customer.dto.LoginRequest;
 import com.mypolicy.customer.service.CustomerService;
 import jakarta.validation.Valid;
@@ -40,6 +41,7 @@ public class CustomerController {
     return ResponseEntity.ok(customerService.getCustomerById(customerId));
   }
 
+<<<<<<< HEAD
   /**
    * Correction/Patch API – update customer record (support/admin).
    * Only non-null fields are updated. Reason is mandatory for audit.
@@ -49,5 +51,12 @@ public class CustomerController {
       @PathVariable String customerId,
       @Valid @RequestBody CustomerCorrectionRequest request) {
     return ResponseEntity.ok(customerService.correctCustomer(customerId, request));
+=======
+  @PutMapping("/{customerId}")
+  public ResponseEntity<CustomerResponse> updateCustomer(
+      @PathVariable String customerId,
+      @Valid @RequestBody CustomerUpdateRequest request) {
+    return ResponseEntity.ok(customerService.updateCustomer(customerId, request));
+>>>>>>> upstream/main
   }
 }

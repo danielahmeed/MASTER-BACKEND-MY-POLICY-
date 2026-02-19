@@ -1,0 +1,124 @@
+# ========================================
+# Data Pipeline Service Configuration
+# ========================================
+# Consolidated service containing:
+#   - Ingestion Module (Port 8082)
+#   - Metadata Module
+#   - Processing Module
+#   - Matching Engine Module
+# ========================================
+
+server:
+  port: 8082
+
+spring:
+  application:
+    name: data-pipeline-service
+
+  # ========================================
+  # PostgreSQL Configuration (Metadata Module)
+  # ========================================
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mypolicy_db
+    username: postgres
+    password: postgres123
+    driver-class-name: org.postgresql.Driver
+
+  # JPA/Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ========================================
+  # MongoDB Configuration (Ingestion Module)
+  # ========================================
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/ingestion_db
+      database: ingestion_db
+
+  # ========================================
+  # File Upload Configuration (Ingestion Module)
+  # ========================================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# File storage
+file:
+  upload-dir: ./uploads
+
+# ========================================
+# Feign Client Configuration (Matching Module)
+# ========================================
+customer:
+  service:
+    url: http://localhost:8081
+
+policy:
+  service:
+    url: http://localhost:8085
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+
+# ========================================
+# Module Specific Configuration
+# ========================================
+pipeline:
+  # Ingestion Module
+  ingestion:
+    enabled: true
+    max-batch-size: 1000
+
+  # Metadata Module
+  metadata:
+    enabled: true
+    cache-ttl: 3600
+
+  # Processing Module
+  processing:
+    enabled: true
+    thread-pool-size: 10
+    chunk-size: 100
+
+  # Matching Module
+  matching:
+    enabled: true
+    fuzzy-threshold: 3
+    strong-match-threshold: 2
+    weak-match-threshold: 3
+
+# ========================================
+# Logging Configuration
+# ========================================
+logging:
+  level:
+    root: INFO
+    com.mypolicy.pipeline: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# ========================================
+# Actuator Configuration
+# ========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

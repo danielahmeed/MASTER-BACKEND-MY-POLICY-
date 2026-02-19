@@ -1,6 +1,7 @@
 # MyPolicy System - Complete Architecture Documentation
 
 ## 📋 Table of Contents
+
 1. [System Overview](#system-overview)
 2. [Architecture Diagram](#architecture-diagram)
 3. [Service Details](#service-details)
@@ -15,6 +16,7 @@
 ## System Overview
 
 **MyPolicy** is a comprehensive insurance policy aggregation platform that allows users to:
+
 - Upload insurance policies from multiple insurers
 - View all policies in a unified dashboard
 - Get intelligent coverage insights and recommendations
@@ -22,6 +24,7 @@
 - Receive personalized advisory
 
 ### Key Features
+
 ✅ Multi-insurer policy aggregation
 ✅ Automated data processing with metadata-driven transformation
 ✅ Intelligent customer matching with fuzzy logic
@@ -35,66 +38,178 @@
 
 ## Architecture Diagram
 
+### High-Level Architecture (Mermaid)
+
+```mermaid
+flowchart TB
+
+%% External Sources
+subgraph EXT["🌍 Multiple Insurers"]
+    INS[HDFC, ICICI, Max Life<br/>CSV/Excel Files]
+end
+
+%% Batch Ingestion
+BATCH[📥 Batch Ingestion<br/>SFTP / API Polling]
+
+%% Core System
+subgraph CORE["🎯 MyPolicy System"]
+    CONFIG[⚙️ Config Service<br/>Port 8888<br/>YAML Configuration]
+
+    subgraph PIPELINE["Data Pipeline Service - Port 8082"]
+        VALIDATE[Ingestion: Validate & Standardize]
+        META[Metadata: Field Mappings]
+        PROCESS[Processing: Transform]
+        MATCH[Matching: Identity Resolution<br/>Mobile+PAN+Email+DOB]
+    end
+
+    ENC[🔐 Encryption<br/>AES-256 PII]
+
+    subgraph SERVICES["Business Services"]
+        CUST[Customer Service<br/>Port 8081<br/>Master Customer File]
+        POLICY[Policy Service<br/>Port 8085<br/>Unified Policies]
+    end
+
+    BFF[BFF Service - Port 8080<br/>API Gateway<br/>Aggregation & Insights]
+end
+
+%% Data
+DB[(💾 Encrypted Database<br/>PostgreSQL: mypolicy_db<br/>MongoDB: ingestion_db)]
+
+%% Customer Portal
+subgraph UI["👤 Customer Portal - My Policy"]
+    LOGIN[Secure Login]
+    VIEW[Unified Portfolio View<br/>Life+Health+Term]
+    GAPS[Protection Gap Analysis<br/>Coverage Advisory]
+end
+
+%% Flow
+INS -->|Batch Files| BATCH
+BATCH --> VALIDATE
+CONFIG -.->|YAML Config| VALIDATE & CUST & POLICY & BFF
+VALIDATE --> META
+META --> PROCESS
+PROCESS --> MATCH
+MATCH --> CUST
+MATCH --> POLICY
+CUST & POLICY <--> ENC
+ENC <--> DB
+BFF --> CUST & POLICY & VALIDATE
+LOGIN --> BFF
+BFF --> VIEW & GAPS
+
+%% Styling
+classDef ext fill:#ffe6f0,stroke:#cc0066,stroke-width:2px
+classDef batch fill:#d6f0ff,stroke:#0077b6,stroke-width:2px
+classDef core fill:#f0f0f0,stroke:#333,stroke-width:1px
+classDef pipeline fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+classDef security fill:#f3e8ff,stroke:#7b2cbf,stroke-width:3px
+classDef db fill:#ffe5b4,stroke:#e85d04,stroke-width:2px
+classDef ui fill:#e0d4ff,stroke:#6a00f4,stroke-width:2px
+
+class INS ext
+class BATCH batch
+class CORE core
+class VALIDATE,META,PROCESS,MATCH pipeline
+class ENC security
+class DB db
+class LOGIN,VIEW,GAPS ui
+```
+
+### Text-Based Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Frontend Application                          │
-│                    (Web / Mobile / Admin)                        │
+│              🌍 Multiple Insurers (HDFC, ICICI, Max Life)        │
+│                    CSV/Excel Files via SFTP/API                  │
 └────────────────────────────┬────────────────────────────────────┘
-                             │ HTTPS
+                             │ Batch Upload
                              ▼
-                    ┌────────────────┐
-                    │  BFF Service   │ Port 8080
-                    │  (API Gateway) │
-                    │  - Auth        │
-                    │  - Portfolio   │
-                    │  - Insights    │
-                    │  - Upload      │
-                    └────────┬───────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Customer   │    │    Policy    │    │  Ingestion   │
-│   Service    │    │   Service    │    │   Service    │
-│   :8081      │    │   :8085      │    │   :8082      │
-│              │    │              │    │              │
-│ - Register   │    │ - Create     │    │ - Upload     │
-│ - Login/JWT  │    │ - Retrieve   │    │ - Validate   │
-│ - Profile    │    │ - Link       │    │ - Track      │
-└──────┬───────┘    └──────┬───────┘    └──────┬───────┘
-       │                   │                    │
-       ▼                   ▼                    ▼
-  PostgreSQL          PostgreSQL            MongoDB
-  customer_db         policy_db         ingestion_db
-
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│  Metadata    │    │  Processing  │    │   Matching   │
-│  Service     │    │   Service    │    │   Engine     │
-│   :8083      │    │   :8084      │    │   :8086      │
-│              │    │              │    │              │
-│ - Mappings   │◄───│ - Transform  │───►│ - Fuzzy      │
-│ - Rules      │    │ - Parse      │    │   Match      │
-│ - Config     │    │ - Validate   │    │ - Link       │
-└──────┬───────┘    └──────────────┘    └──────────────┘
-       │
-       ▼
-  PostgreSQL
-  metadata_db
+                    ┌────────────────────────┐
+                    │   Config Service :8888  │
+                    │   YAML Configuration    │
+                    └───────────┬─────────────┘
+                                │ (provides config to all)
+        ┌───────────────────────┼────────────────────────┐
+        │                       │                        │
+        ▼                       ▼                        ▼
+┌─────────────────┐   ┌─────────────────┐   ┌──────────────────────┐
+│  BFF Service    │   │ Data Pipeline   │   │  Business Services   │
+│   Port 8080     │   │  Port 8082      │   │                      │
+│  - API Gateway  │   │  ┌────────────┐ │   │  Customer :8081      │
+│  - Aggregation  │───│  │ Ingestion  │ │   │  - Master Customer   │
+│  - Insights     │   │  │ Metadata   │─├───│  - JWT Auth          │
+│  - JWT Auth     │   │  │ Processing │ │   │                      │
+└────────┬────────┘   │  │ Matching   │ │   │  Policy :8085        │
+         │            │  └────────────┘ │───│  - Unified Policies  │
+         │            └─────────┬───────┘   │  - Multi-Source Link │
+         │                      │           └──────────┬────────────┘
+         │                      │                      │
+         │            ┌─────────▼────────┐            │
+         │            │  Encryption :AES-256          │
+         │            │  Data at Rest & Transit      │
+         │            └─────────┬────────┘            │
+         │                      │                      │
+         └──────────────────────┼──────────────────────┘
+                                ▼
+                    ┌───────────────────────┐
+                    │   Encrypted Databases  │
+                    │  PostgreSQL: mypolicy_db│
+                    │  MongoDB: ingestion_db  │
+                    └───────────────────────┘
+                                ▲
+                                │
+                    ┌───────────┴────────────┐
+                    │   Customer Portal      │
+                    │   - Secure Login       │
+                    │   - Portfolio View     │
+                    │   - Gap Analysis       │
+                    └────────────────────────┘
 ```
 
 ---
 
 ## Service Details
 
-### 1. BFF Service (Backend for Frontend) - Port 8080
+### 1. Config Service - Port 8888
+
+**Purpose**: Centralized configuration management for all microservices
+
+**Responsibilities**:
+
+- Serve application.yaml configurations to all services
+- Support for environment-specific configurations (dev, staging, prod)
+- Dynamic configuration refresh without service restart
+- Version control for configurations
+- Secure credential management
+
+**Database**: File-based configuration repository (`config-repo/`)
+
+**Configuration Structure**:
+
+```yaml
+config-repo/
+├── bff-service.yaml
+├── customer-service.yaml
+├── data-pipeline-service.yaml
+└── policy-service.yaml
+```
+
+**Key Features**:
+
+- Spring Cloud Config Server
+- Git-based configuration storage
+- Encrypted property support
+- Configuration hot-reload via `/actuator/refresh`
+- Health check endpoint
+
+---
+
+### 2. BFF Service (Backend for Frontend) - Port 8080
 
 **Purpose**: API Gateway and request aggregator for frontend applications
 
 **Responsibilities**:
+
 - Single entry point for all frontend requests
 - Request aggregation (combine multiple service calls)
 - Response transformation (frontend-optimized format)
@@ -102,6 +217,7 @@
 - Error handling and fallback
 
 **Key Endpoints**:
+
 ```
 POST   /api/bff/auth/register          - User registration
 POST   /api/bff/auth/login             - Authentication & JWT
@@ -112,6 +228,7 @@ GET    /api/bff/upload/status/{jobId}  - Upload status
 ```
 
 **Technology Stack**:
+
 - Spring Boot 3.1.5
 - Spring Cloud OpenFeign
 - Spring Security
@@ -119,20 +236,22 @@ GET    /api/bff/upload/status/{jobId}  - Upload status
 
 ---
 
-### 2. Customer Service - Port 8081
+### 3. Customer Service - Port 8081
 
 **Purpose**: User management and authentication
 
 **Responsibilities**:
+
 - Customer registration with PII encryption
 - JWT-based authentication
 - Password hashing (BCrypt)
 - Customer profile management
 - Customer search and retrieval
 
-**Database**: PostgreSQL (`mypolicy_customer_db`)
+**Database**: PostgreSQL (`mypolicy_db` - centralized)
 
 **Schema**:
+
 ```sql
 CREATE TABLE customers (
     customer_id UUID PRIMARY KEY,
@@ -151,6 +270,7 @@ CREATE TABLE customers (
 ```
 
 **Key Features**:
+
 - AES-256 encryption for PII
 - BCrypt password hashing
 - JWT token generation
@@ -158,32 +278,135 @@ CREATE TABLE customers (
 
 ---
 
-### 3. Ingestion Service - Port 8082
+### 4. Data Pipeline Service - Port 8082
 
-**Purpose**: Handle file uploads from insurers
+**Purpose**: Unified service handling file ingestion, metadata management, processing, and customer matching
+
+**Architecture**: Consolidated service with 4 internal modules:
+
+**Modules**:
+
+#### Module 1: Ingestion Module
 
 **Responsibilities**:
-- Accept Excel/CSV file uploads
-- Create ingestion jobs
-- Track processing status
-- Store validation errors
+
+- Accept Excel/CSV file uploads from multiple insurers
+- Support batch ingestion via SFTP/API polling
+- Create ingestion jobs with unique job IDs
+- Track processing status in real-time
+- Store validation errors for troubleshooting
 - File metadata management
+
+**Supported Sources**:
+
+- Manual uploads via BFF
+- SFTP batch transfers (scheduled)
+- API polling from insurer endpoints
+
+**Supported Formats**:
+
+- Excel (.xlsx, .xls)
+- CSV (.csv)
+
+#### Module 2: Metadata Module
+
+**Responsibilities**:
+
+- Store insurer-specific field mappings
+- Manage policy type configurations
+- Provide mapping rules to Processing Module
+- Support multiple policy types per insurer (TERM_LIFE, HEALTH, MOTOR, etc.)
+- Dynamic mapping configuration
+
+**Field Mapping Structure**:
+
+```json
+{
+  "INSURER_ID": "HDFC_LIFE",
+  "POLICY_TYPE": "TERM_LIFE",
+  "mappings": [
+    {
+      "sourceField": "Mob_No",
+      "targetField": "mobileNumber",
+      "dataType": "STRING",
+      "required": true
+    },
+    {
+      "sourceField": "Policy_Num",
+      "targetField": "policyNumber",
+      "dataType": "STRING",
+      "required": true
+    }
+  ]
+}
+```
+
+#### Module 3: Processing Module
+
+**Responsibilities**:
+
+- Fetch metadata rules from Metadata Module
+- Read Excel/CSV files using Apache POI
+- Transform data using field mappings
+- Validate data integrity
+- Standardize records into common format
+- Handle data type conversions
+- Error handling and logging
+
+**Processing Flow**:
+
+```
+1. Receive ingestion job (file path, insurerId, policyType)
+2. Fetch field mappings from Metadata Module
+3. Read file row by row
+4. Apply transformations
+5. Validate required fields
+6. Create standardized PolicyRecord
+7. Send to Matching Module
+```
+
+#### Module 4: Matching Module (Identity Resolution)
+
+**Responsibilities**:
+
+- Match processed policy data with existing customers
+- Multi-factor identity resolution (Mobile + PAN + Email + DOB)
+- Fuzzy name matching (Levenshtein distance)
+- Customer deduplication
+- Policy creation via Policy Service
+- Handle edge cases (missing identifiers)
+
+**Matching Algorithm (Priority Order)**:
+
+```
+1. Exact match on PAN (highest confidence)
+2. Exact match on Email
+3. Exact match on Mobile Number
+4. Fuzzy match on Name (Levenshtein distance ≤ 3)
+5. Composite match (DOB + partial name)
+6. If no match → Create new customer record
+7. Create policy and link to customer
+```
 
 **Database**: MongoDB (`mypolicy_ingestion_db`)
 
-**Schema**:
+**Ingestion Job Schema**:
+
 ```javascript
 {
   _id: ObjectId,
-  jobId: String,
+  jobId: String,                    // Unique job identifier
   customerId: String,
   fileName: String,
-  fileType: String,        // EXCEL, CSV
+  fileType: String,                 // EXCEL, CSV
   filePath: String,
-  insurerId: String,
-  status: String,          // UPLOADED, PROCESSING, COMPLETED, FAILED
+  insurerId: String,                // HDFC, ICICI, MAX_LIFE, etc.
+  policyType: String,               // TERM_LIFE, HEALTH, MOTOR
+  status: String,                   // UPLOADED, PROCESSING, COMPLETED, FAILED
   totalRecords: Number,
   processedRecords: Number,
+  matchedCustomers: Number,
+  newCustomers: Number,
   validationErrors: [
     {
       row: Number,
@@ -192,98 +415,52 @@ CREATE TABLE customers (
     }
   ],
   uploadedAt: Date,
+  startedAt: Date,
   completedAt: Date
 }
 ```
 
-**Supported Formats**:
-- Excel (.xlsx, .xls)
-- CSV (.csv)
+**Metadata Configuration Schema** (PostgreSQL within mypolicy_db):
 
----
-
-### 4. Metadata Service - Port 8083
-
-**Purpose**: Store and manage field mapping rules for different insurers
-
-**Responsibilities**:
-- Store insurer-specific field mappings
-- Manage policy type configurations
-- Provide mapping rules to Processing Service
-- Support multiple policy types per insurer
-
-**Database**: PostgreSQL (`mypolicy_metadata_db`)
-
-**Schema**:
 ```sql
 CREATE TABLE insurer_configurations (
     config_id UUID PRIMARY KEY,
     insurer_id VARCHAR(50) UNIQUE,
     insurer_name VARCHAR(255),
+    policy_types TEXT[],            -- Supported policy types
     field_mappings JSONB,           -- Flexible mapping storage
     active BOOLEAN DEFAULT true,
     updated_at TIMESTAMP
 );
 ```
 
-**Field Mapping Structure**:
-```json
-{
-  "TERM_LIFE": [
-    {
-      "sourceField": "Mob_No",
-      "targetField": "mobileNumber",
-      "dataType": "STRING",
-      "required": true,
-      "transformFunction": null
-    },
-    {
-      "sourceField": "Policy_Num",
-      "targetField": "policyNumber",
-      "dataType": "STRING",
-      "required": true,
-      "transformFunction": null
-    }
-  ]
-}
-```
-
----
-
-### 5. Processing Service - Port 8084
-
-**Purpose**: Read uploaded files, apply metadata rules, and standardize data
-
-**Responsibilities**:
-- Fetch metadata rules from Metadata Service
-- Read Excel/CSV files using Apache POI
-- Transform data using field mappings
-- Validate data integrity
-- Send standardized records to Matching Engine
-
 **Technology Stack**:
+
 - Spring Boot 3.1.5
 - Apache POI (Excel processing)
+- Apache Commons Text (Levenshtein distance)
 - Spring Cloud OpenFeign
+- MongoDB Driver
+- Spring Data JPA
 
-**Processing Flow**:
-```
-1. Receive file path, insurerId, policyType
-2. Call Metadata Service → Get field mappings
-3. Read file row by row
-4. Apply transformations
-5. Validate required fields
-6. Create standardized records
-7. Send to Matching Engine
-```
+**Key Features**:
+
+- Internal module communication (no external API calls)
+- Batch processing support (SFTP/API polling)
+- Real-time status tracking
+- Identity resolution with 95%+ accuracy
+- Comprehensive error handling
+- Retry mechanism for failed records
+- AES-256 encryption for PII during matching
 
 ---
 
-### 6. Policy Service - Port 8085
+### 5. Policy Service - Port 8085
 
 **Purpose**: Store and manage insurance policies
 
 **Responsibilities**:
+
 - Policy creation and storage
 - Link policies to customers
 - Policy retrieval by customer
@@ -293,6 +470,7 @@ CREATE TABLE insurer_configurations (
 **Database**: PostgreSQL (`mypolicy_policy_db`)
 
 **Schema**:
+
 ```sql
 CREATE TABLE policies (
     id UUID PRIMARY KEY,
@@ -316,41 +494,10 @@ CREATE INDEX idx_policy_number ON policies(policy_number);
 
 ---
 
-### 7. Matching Engine - Port 8086
-
-**Purpose**: Match processed policy data with existing customers using fuzzy logic
-
-**Responsibilities**:
-- Customer search and matching
-- Fuzzy name matching (Levenshtein distance)
-- Exact matching on PAN/Email/Mobile
-- Policy creation via Policy Service
-- Handle duplicate detection
-
-**Technology Stack**:
-- Spring Boot 3.1.5
-- Apache Commons Text (Levenshtein distance)
-- Spring Cloud OpenFeign
-
-**Matching Algorithm**:
-```
-1. Receive standardized policy record
-2. Extract customer identifiers (name, mobile, email, PAN)
-3. Search Customer Service:
-   a. Exact match on PAN (highest priority)
-   b. Exact match on Email
-   c. Exact match on Mobile
-   d. Fuzzy match on Name (Levenshtein distance ≤ 3)
-4. If match found → Link policy to existing customer
-5. If no match → Create new customer record
-6. Create policy in Policy Service
-```
-
----
-
 ## Data Flow
 
 ### Flow 1: User Registration
+
 ```
 User → BFF → Customer Service → PostgreSQL
                 ↓
@@ -360,6 +507,7 @@ User → BFF → Customer Service → PostgreSQL
 ```
 
 ### Flow 2: User Login
+
 ```
 User → BFF → Customer Service
                 ↓
@@ -371,6 +519,7 @@ User → BFF → Customer Service
 ```
 
 ### Flow 3: Portfolio View (Aggregation)
+
 ```
 User → BFF
         ↓
@@ -386,6 +535,7 @@ User → BFF
 ```
 
 ### Flow 4: Coverage Insights
+
 ```
 User → BFF → InsightsService
                 ↓
@@ -405,28 +555,59 @@ User → BFF → InsightsService
 ```
 
 ### Flow 5: File Upload & Processing (Complete Pipeline)
+
 ```
-User → BFF → Ingestion Service
-                ↓
-            Save to MongoDB
-                ↓
-            Return Job ID
-                ↓
-        Processing Service (Triggered)
-                ↓
-        Fetch Metadata Rules
-                ↓
-        Read Excel File
-                ↓
-        Transform Data
-                ↓
-        Matching Engine
-                ↓
-    [Customer Matching]
-        ├─→ Find/Create Customer
-        └─→ Create Policy
-                ↓
-            Complete
+User/Batch Source → BFF → Data Pipeline Service
+                            ↓
+                    [Ingestion Module]
+                    Save to MongoDB (Job Created)
+                            ↓
+                    Return Job ID to User
+                            ↓
+                    [Processing Module - Async]
+                    Fetch Metadata Rules
+                            ↓
+                    Read Excel/CSV File
+                            ↓
+                    Transform Data per Mappings
+                            ↓
+                    Validate Required Fields
+                            ↓
+                    [Matching Module]
+                    Identity Resolution
+                    (PAN → Email → Mobile → Name)
+                            ↓
+                    [Decision Point]
+                    Match Found?
+                    ├─→ YES: Link to Existing Customer
+                    └─→ NO: Create New Customer
+                            ↓
+                    Call Policy Service
+                            ↓
+                    Create Policy Record
+                            ↓
+                    Update Job Status: COMPLETED
+```
+
+### Flow 6: Batch Ingestion (SFTP/API Polling)
+
+```
+[Scheduled Job - Every 6 hours]
+        ↓
+Data Pipeline Service
+        ↓
+[SFTP Module or API Poller]
+Connect to Insurer Systems
+        ↓
+Fetch New Files
+        ↓
+Download to /uploads directory
+        ↓
+Create Ingestion Jobs
+        ↓
+Trigger Processing Module
+        ↓
+Process as Flow 5
 ```
 
 ---
@@ -436,52 +617,85 @@ User → BFF → Ingestion Service
 ### BFF Service (Port 8080)
 
 #### Authentication
+
 ```http
 POST /api/bff/auth/register
 POST /api/bff/auth/login
 ```
 
 #### Portfolio
+
 ```http
 GET /api/bff/portfolio/{customerId}
 ```
 
 #### Insights
+
 ```http
 GET /api/bff/insights/{customerId}
 ```
 
 #### File Upload
+
 ```http
 POST /api/bff/upload
 GET /api/bff/upload/status/{jobId}
 ```
 
+### Config Service (Port 8888)
+
+```http
+GET  /actuator/health           - Health check
+POST /actuator/refresh          - Refresh configurations
+GET  /{service-name}/{profile}  - Get configuration for a service
+```
+
 ### Customer Service (Port 8081)
+
 ```http
 POST /api/v1/customers/register
 POST /api/v1/customers/login
 GET  /api/v1/customers/{customerId}
+GET  /api/v1/customers/search   - Search by mobile, email, or PAN
 ```
 
-### Ingestion Service (Port 8082)
+### Data Pipeline Service (Port 8082)
+
+#### Ingestion Module Endpoints
+
 ```http
-POST /api/v1/ingestion/upload
-GET  /api/v1/ingestion/status/{jobId}
+POST /api/v1/ingestion/upload             - Manual file upload
+POST /api/v1/ingestion/batch/sftp         - SFTP batch trigger
+POST /api/v1/ingestion/batch/poll         - API polling trigger
+GET  /api/v1/ingestion/status/{jobId}     - Job status tracking
+GET  /api/v1/ingestion/jobs               - List ingestion jobs
 ```
 
-### Metadata Service (Port 8083)
+#### Metadata Module Endpoints
+
 ```http
-POST /api/v1/metadata/config
-GET  /api/v1/metadata/config/{insurerId}
+POST /api/v1/metadata/config              - Create/Update insurer config
+GET  /api/v1/metadata/config/{insurerId}  - Get insurer mappings
+GET  /api/v1/metadata/configs             - List all configurations
+DELETE /api/v1/metadata/config/{insurerId} - Delete configuration
 ```
 
-### Processing Service (Port 8084)
+#### Processing Module Endpoints (Internal)
+
 ```http
-POST /api/v1/processing/trigger
+POST /api/v1/processing/trigger           - Trigger processing (internal)
+GET  /api/v1/processing/status/{jobId}    - Processing status
+```
+
+#### Matching Module Endpoints (Internal)
+
+```http
+POST /api/v1/matching/resolve             - Identity resolution (internal)
+GET  /api/v1/matching/stats               - Matching statistics
 ```
 
 ### Policy Service (Port 8085)
+
 ```http
 POST /api/v1/policies
 GET  /api/v1/policies/customer/{customerId}
@@ -492,9 +706,12 @@ GET  /api/v1/policies/{id}
 
 ## Database Schema
 
-### PostgreSQL Databases
+### PostgreSQL - Centralized Database (mypolicy_db)
 
-#### 1. mypolicy_customer_db
+All services use a single PostgreSQL database with separate tables:
+
+#### Customers Table (Customer Service)
+
 ```sql
 -- Customers table
 CREATE TABLE customers (
@@ -517,7 +734,8 @@ CREATE INDEX idx_mobile ON customers(mobile_number);
 CREATE INDEX idx_pan ON customers(pan_number);
 ```
 
-#### 2. mypolicy_metadata_db
+#### Insurer Configurations Table (Metadata Service)
+
 ```sql
 -- Insurer configurations table
 CREATE TABLE insurer_configurations (
@@ -532,7 +750,8 @@ CREATE TABLE insurer_configurations (
 CREATE INDEX idx_insurer_id ON insurer_configurations(insurer_id);
 ```
 
-#### 3. mypolicy_policy_db
+#### Policies Table (Policy Service)
+
 ```sql
 -- Policies table
 CREATE TABLE policies (
@@ -559,6 +778,7 @@ CREATE INDEX idx_insurer_id ON policies(insurer_id);
 ### MongoDB Database
 
 #### mypolicy_ingestion_db
+
 ```javascript
 // Collection: ingestion_jobs
 {
@@ -594,6 +814,7 @@ db.ingestion_jobs.createIndex({ status: 1 })
 ## Deployment Guide
 
 ### Prerequisites
+
 - Java 17+
 - Maven 3.8+
 - PostgreSQL 14+
@@ -602,20 +823,18 @@ db.ingestion_jobs.createIndex({ status: 1 })
 ### Database Setup
 
 #### PostgreSQL
+
 ```bash
-# Create databases
-createdb mypolicy_customer_db
-createdb mypolicy_metadata_db
-createdb mypolicy_policy_db
+# Create single centralized database
+createdb mypolicy_db
 
 # Create user (optional)
 psql -c "CREATE USER mypolicy WITH PASSWORD 'password';"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_customer_db TO mypolicy;"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_metadata_db TO mypolicy;"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_policy_db TO mypolicy;"
+psql -c "GRANT ALL PRIVILEGES ON DATABASE mypolicy_db TO mypolicy;"
 ```
 
 #### MongoDB
+
 ```bash
 # Start MongoDB
 mongod --dbpath /data/db
@@ -643,6 +862,7 @@ cd bff-service && mvn spring-boot:run &
 ```
 
 ### Verify Services
+
 ```bash
 # Check all services are running
 curl http://localhost:8080/actuator/health  # BFF
@@ -659,6 +879,7 @@ curl http://localhost:8086/actuator/health  # Matching
 ## Testing Guide
 
 ### 1. Register a User
+
 ```bash
 curl -X POST http://localhost:8080/api/bff/auth/register \
   -H "Content-Type: application/json" \
@@ -675,6 +896,7 @@ curl -X POST http://localhost:8080/api/bff/auth/register \
 ```
 
 ### 2. Login
+
 ```bash
 curl -X POST http://localhost:8080/api/bff/auth/login \
   -H "Content-Type: application/json" \
@@ -688,6 +910,7 @@ export JWT_TOKEN="<token_from_response>"
 ```
 
 ### 3. Configure Metadata
+
 ```bash
 curl -X POST "http://localhost:8083/api/v1/metadata/config?insurerId=HDFC_LIFE&insurerName=HDFC Life" \
   -H "Content-Type: application/json" \
@@ -722,6 +945,7 @@ curl -X POST "http://localhost:8083/api/v1/metadata/config?insurerId=HDFC_LIFE&i
 ```
 
 ### 4. Upload File
+
 ```bash
 curl -X POST http://localhost:8080/api/bff/upload \
   -H "Authorization: Bearer $JWT_TOKEN" \
@@ -731,12 +955,14 @@ curl -X POST http://localhost:8080/api/bff/upload \
 ```
 
 ### 5. Get Portfolio
+
 ```bash
 curl -X GET "http://localhost:8080/api/bff/portfolio/<customer_id>" \
   -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### 6. Get Coverage Insights
+
 ```bash
 curl -X GET "http://localhost:8080/api/bff/insights/<customer_id>" \
   -H "Authorization: Bearer $JWT_TOKEN"
@@ -747,21 +973,25 @@ curl -X GET "http://localhost:8080/api/bff/insights/<customer_id>" \
 ## Security Considerations
 
 ### 1. Authentication
+
 - JWT tokens with 24-hour expiration
 - BCrypt password hashing (strength: 10)
 - Secure token storage on client side
 
 ### 2. Data Encryption
+
 - PII fields encrypted at rest (AES-256)
 - HTTPS for all communications
 - Database connection encryption
 
 ### 3. Authorization
+
 - Role-based access control (future)
 - Customer can only access own data
 - Admin endpoints protected
 
 ### 4. Input Validation
+
 - Request validation at BFF layer
 - SQL injection prevention (JPA)
 - File upload size limits
@@ -772,17 +1002,20 @@ curl -X GET "http://localhost:8080/api/bff/insights/<customer_id>" \
 ## Monitoring & Logging
 
 ### Application Logs
+
 ```
 logging.level.com.mypolicy=DEBUG
 ```
 
 ### Health Checks
+
 ```
 GET /actuator/health
 GET /actuator/info
 ```
 
 ### Metrics (Future)
+
 - Prometheus integration
 - Grafana dashboards
 - Request rate monitoring
@@ -808,6 +1041,7 @@ GET /actuator/info
 ## Support
 
 For issues or questions:
+
 - Email: support@mypolicy.com
 - Documentation: /docs
 - API Reference: /api-docs

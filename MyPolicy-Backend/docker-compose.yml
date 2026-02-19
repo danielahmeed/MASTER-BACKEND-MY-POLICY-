@@ -1,0 +1,187 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mypolicy-postgres
+    environment:
+      POSTGRES_DB: mypolicy_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mypolicy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mypolicy-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: mypolicy
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mypolicy-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Configuration Service (Must start first)
+  config-service:
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    container_name: mypolicy-config-service
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: config123
+    networks:
+      - mypolicy-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # Customer Service
+  customer-service:
+    build:
+      context: ./customer-service
+      dockerfile: Dockerfile
+    container_name: mypolicy-customer-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_APPLICATION_NAME: customer-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mypolicy_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      config-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - mypolicy-network
+    restart: on-failure
+
+  # Policy Service
+  policy-service:
+    build:
+      context: ./policy-service
+      dockerfile: Dockerfile
+    container_name: mypolicy-policy-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_APPLICATION_NAME: policy-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mypolicy_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      config-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - mypolicy-network
+    restart: on-failure
+
+  # Data Pipeline Service (Consolidated: Ingestion + Metadata + Processing + Matching)
+  data-pipeline-service:
+    build:
+      context: ./data-pipeline-service
+      dockerfile: Dockerfile
+    container_name: mypolicy-data-pipeline-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_APPLICATION_NAME: data-pipeline-service
+      # PostgreSQL (for Metadata)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mypolicy_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      # MongoDB (for Ingestion)
+      SPRING_DATA_MONGODB_URI: mongodb://admin:admin123@mongodb:27017/mypolicy?authSource=admin
+      # External Service URLs
+      CUSTOMER_SERVICE_URL: http://customer-service:8081
+      POLICY_SERVICE_URL: http://policy-service:8085
+    depends_on:
+      config-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      customer-service:
+        condition: service_started
+      policy-service:
+        condition: service_started
+    volumes:
+      - ./ingestion-service/Datasets:/app/datasets
+    networks:
+      - mypolicy-network
+    restart: on-failure
+
+  # BFF Service (Backend for Frontend)
+  bff-service:
+    build:
+      context: ./bff-service
+      dockerfile: Dockerfile
+    container_name: mypolicy-bff-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_APPLICATION_NAME: bff-service
+      CUSTOMER_SERVICE_URL: http://customer-service:8081
+      POLICY_SERVICE_URL: http://policy-service:8085
+      DATA_PIPELINE_SERVICE_URL: http://data-pipeline-service:8082
+    depends_on:
+      config-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_started
+      policy-service:
+        condition: service_started
+      data-pipeline-service:
+        condition: service_started
+    networks:
+      - mypolicy-network
+    restart: on-failure
+
+networks:
+  mypolicy-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
