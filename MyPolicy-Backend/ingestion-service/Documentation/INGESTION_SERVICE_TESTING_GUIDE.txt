@@ -1,0 +1,423 @@
+================================================================================
+INGESTION SERVICE - UNIFIED TESTING GUIDE
+================================================================================
+Step-by-step instructions to test all ingestion service features: normal uploads,
+correction file uploads, internal APIs, exposed customer API, and error handling.
+
+================================================================================
+1. PREREQUISITES
+================================================================================
+
+1.1 Required Software
+  - Java 17+
+  - Maven 3.8+
+  - MongoDB running locally on localhost:27017
+  - Postman (or curl) for API testing
+
+1.2 Start MongoDB (if not running)
+  Windows:  mongod
+  Linux/Mac: mongod --dbpath /data/db
+  Docker:   docker run -d -p 27017:27017 mongo:7
+
+1.3 Start Ingestion Service
+  cd MyPolicy-Backend/ingestion-service
+  mvn spring-boot:run
+
+  Verify: Service starts on http://localhost:8082
+
+1.4 Sample Files
+  - Normal upload:  Datasets/Auto_Insurance.csv  (or any .csv/.xls/.xlsx)
+  - Correction:     Create a CSV with policyNumber, panNumber, and corrected columns
+                     (e.g. mobileNumber, customerName, email, address)
+
+================================================================================
+2. BASE URL & CONVENTIONS
+================================================================================
+
+Base URL:    http://localhost:8082
+Port:        8082
+API Key:     mypolicy-customer-api-key-dev  (for exposed/public APIs)
+
+File rules:
+  - Allowed: .csv, .xls, .xlsx
+  - Max size: 50 MB
+  - Encoding: UTF-8 recommended for CSV
+
+================================================================================
+3. PART A: INTERNAL APIs (No API Key)
+================================================================================
+Used by BFF, Processing Service, or internal tools. No X-API-Key required.
+
+--------------------------------------------------------------------------------
+3.1 Test: Normal File Upload
+--------------------------------------------------------------------------------
+
+Purpose:  Upload a policy file for initial ingestion (INSERT flow).
+
+Postman:
+  1. Method:  POST
+  2. URL:    http://localhost:8082/api/v1/ingestion/upload
+  3. Body:   form-data
+     - file       [File]   → Select Auto_Insurance.csv
+     - insurerId  [Text]   → HDFC_LIFE
+     - uploadedBy [Text]   → test-user
+  4. Send
+
+curl:
+  curl -X POST http://localhost:8082/api/v1/ingestion/upload ^
+    -F "file=@Datasets/Auto_Insurance.csv" ^
+    -F "insurerId=HDFC_LIFE" ^
+    -F "uploadedBy=test-user"
+
+Expected Response (201 Created):
+  {
+    "jobId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "status": "UPLOADED"
+  }
+
+SAVE the jobId for step 3.4 and 3.5.
+
+--------------------------------------------------------------------------------
+3.2 Test: Correction File Upload (via Parameter)
+--------------------------------------------------------------------------------
+
+Purpose:  Upload a delta/correction file for bulk updates (UPDATE flow).
+
+Option A - Query parameter:
+  Add form-data key:  fileType [Text] → correction
+
+Postman:
+  1. Method:  POST
+  2. URL:    http://localhost:8082/api/v1/ingestion/upload
+  3. Body:   form-data
+     - file       [File]   → your_correction.csv
+     - insurerId  [Text]   → HDFC_LIFE
+     - uploadedBy [Text]   → data-ops-user
+     - fileType   [Text]   → correction
+  4. Send
+
+curl:
+  curl -X POST "http://localhost:8082/api/v1/ingestion/upload?fileType=correction" ^
+    -F "file=@correction.csv" ^
+    -F "insurerId=HDFC_LIFE" ^
+    -F "uploadedBy=data-ops-user"
+
+--------------------------------------------------------------------------------
+3.3 Test: Correction File Upload (via Filename Convention)
+--------------------------------------------------------------------------------
+
+Purpose:  Same as 3.2, but detected automatically from filename.
+
+Rename your file to include "_correction", e.g.:
+  - data_correction.csv
+  - fixes_correction.xlsx
+
+Postman:
+  1. Method:  POST
+  2. URL:    http://localhost:8082/api/v1/ingestion/upload
+  3. Body:   form-data
+     - file       [File]   → data_correction.csv  (no fileType param needed)
+     - insurerId  [Text]   → HDFC_LIFE
+     - uploadedBy [Text]   → data-ops-user
+  4. Send
+
+The service will set fileType=correction automatically.
+
+Correction CSV format (minimum columns for matching + corrected fields):
+  policyNumber, panNumber, mobileNumber, customerName, email, address, planName
+  AUPOL100000, IFAZG4101U, 9988776655, Nitin R Sharma, ...
+  (Only rows that need fixing; Policy Number and/or PAN required for matching)
+
+--------------------------------------------------------------------------------
+3.4 Test: Get Job Status
+--------------------------------------------------------------------------------
+
+Purpose:  Check status of an ingestion job.
+
+Postman:
+  1. Method:  GET
+  2. URL:    http://localhost:8082/api/v1/ingestion/status/{jobId}
+     Replace {jobId} with the jobId from 3.1
+  3. Send
+
+curl:
+  curl -X GET "http://localhost:8082/api/v1/ingestion/status/YOUR-JOB-ID"
+
+Expected Response (200 OK):
+  {
+    "jobId": "...",
+    "status": "UPLOADED",
+    "processedRecords": 0,
+    "totalRecords": 0,
+    "filePath": "C:/path/to/storage/ingestion/{jobId}.csv",
+    "insurerId": "HDFC_LIFE",
+    "fileType": "normal",
+    "createdAt": "2024-02-18T10:30:00",
+    "updatedAt": "2024-02-18T10:30:00"
+  }
+
+For correction uploads, fileType will be "correction".
+
+--------------------------------------------------------------------------------
+3.5 Test: Update Progress (Processing Service)
+--------------------------------------------------------------------------------
+
+Purpose:  Simulate Processing Service reporting progress. Job must be PROCESSING.
+
+Prerequisite:  First set status to PROCESSING (see 3.6).
+
+Postman:
+  1. Method:  PATCH
+  2. URL:    http://localhost:8082/api/v1/ingestion/{jobId}/progress
+  3. Headers:  Content-Type: application/json
+  4. Body:   raw JSON
+     {
+       "processedRecordsDelta": 10
+     }
+  5. Send
+
+curl:
+  curl -X PATCH "http://localhost:8082/api/v1/ingestion/YOUR-JOB-ID/progress" ^
+    -H "Content-Type: application/json" ^
+    -d "{\"processedRecordsDelta\": 10}"
+
+Expected Response: 204 No Content
+
+--------------------------------------------------------------------------------
+3.6 Test: Update Status (Processing Service)
+--------------------------------------------------------------------------------
+
+Purpose:  Transition job through lifecycle: UPLOADED → PROCESSING → COMPLETED | FAILED
+
+Allowed transitions:
+  - UPLOADED    → PROCESSING
+  - PROCESSING → COMPLETED
+  - PROCESSING → FAILED
+
+Step 1 - Start processing:
+  Body:  { "status": "PROCESSING" }
+
+Step 2 - Mark complete:
+  Body:  { "status": "COMPLETED" }
+
+Step 2 (alt) - Mark failed:
+  Body:  {
+    "status": "FAILED",
+    "failureReason": "Validation failed: invalid date in row 5"
+  }
+
+Postman:
+  1. Method:  PATCH
+  2. URL:    http://localhost:8082/api/v1/ingestion/{jobId}/status
+  3. Headers:  Content-Type: application/json
+  4. Body:   raw JSON (see above)
+  5. Send
+
+curl:
+  curl -X PATCH "http://localhost:8082/api/v1/ingestion/YOUR-JOB-ID/status" ^
+    -H "Content-Type: application/json" ^
+    -d "{\"status\": \"PROCESSING\"}"
+
+Expected Response: 204 No Content
+
+================================================================================
+4. PART B: EXPOSED / PUBLIC API (X-API-Key Required)
+================================================================================
+Used by external customers. Requires valid X-API-Key header.
+
+--------------------------------------------------------------------------------
+4.1 Test: Public Upload (Normal)
+--------------------------------------------------------------------------------
+
+Postman:
+  1. Method:  POST
+  2. URL:    http://localhost:8082/api/public/v1/ingestion/upload
+  3. Headers:  X-API-Key: mypolicy-customer-api-key-dev
+  4. Body:   form-data
+     - file       [File]   → Auto_Insurance.csv
+     - insurerId  [Text]   → HDFC_LIFE
+     - uploadedBy [Text]   → customer-user-001
+  5. Send
+
+curl:
+  curl -X POST http://localhost:8082/api/public/v1/ingestion/upload ^
+    -H "X-API-Key: mypolicy-customer-api-key-dev" ^
+    -F "file=@Datasets/Auto_Insurance.csv" ^
+    -F "insurerId=HDFC_LIFE" ^
+    -F "uploadedBy=customer-user-001"
+
+Expected Response (201 Created):  Same as 3.1
+
+--------------------------------------------------------------------------------
+4.2 Test: Public Upload (Correction)
+--------------------------------------------------------------------------------
+
+Same as 4.1, but add fileType=correction or use *_correction.csv filename.
+
+Postman:
+  Headers:  X-API-Key: mypolicy-customer-api-key-dev
+  Body:     file, insurerId, uploadedBy, fileType=correction (or correction file)
+
+--------------------------------------------------------------------------------
+4.3 Test: Public Job Status
+--------------------------------------------------------------------------------
+
+Postman:
+  1. Method:  GET
+  2. URL:    http://localhost:8082/api/public/v1/ingestion/status/{jobId}
+  3. Headers:  X-API-Key: mypolicy-customer-api-key-dev
+  4. Send
+
+curl:
+  curl -X GET "http://localhost:8082/api/public/v1/ingestion/status/YOUR-JOB-ID" ^
+    -H "X-API-Key: mypolicy-customer-api-key-dev"
+
+Expected Response (200 OK):  Same as 3.4
+
+--------------------------------------------------------------------------------
+4.4 Test: Auth Failure - Missing API Key
+--------------------------------------------------------------------------------
+
+Postman:
+  1. Method:  POST
+  2. URL:    http://localhost:8082/api/public/v1/ingestion/upload
+  3. Headers:  (none - do NOT add X-API-Key)
+  4. Body:   form-data with file, insurerId, uploadedBy
+  5. Send
+
+Expected Response (401 Unauthorized):
+  { "error": "Missing X-API-Key header" }
+
+--------------------------------------------------------------------------------
+4.5 Test: Auth Failure - Invalid API Key
+--------------------------------------------------------------------------------
+
+Postman:
+  1. Method:  POST
+  2. URL:    http://localhost:8082/api/public/v1/ingestion/upload
+  3. Headers:  X-API-Key: wrong-key-123
+  4. Body:   form-data with file, insurerId, uploadedBy
+  5. Send
+
+Expected Response (401 Unauthorized):
+  { "error": "Invalid API key" }
+
+================================================================================
+5. RECOMMENDED TEST SEQUENCES
+================================================================================
+
+--------------------------------------------------------------------------------
+Sequence A: Full Normal Ingestion Flow
+--------------------------------------------------------------------------------
+  1. Upload file         (3.1)  → Get jobId
+  2. Get status          (3.4)  → Verify UPLOADED, fileType=normal
+  3. Update status       (3.6)  → PROCESSING
+  4. Update progress      (3.5)  → processedRecordsDelta: 50
+  5. Get status          (3.4)  → Verify processedRecords updated
+  6. Update status       (3.6)  → COMPLETED
+  7. Get status          (3.4)  → Verify final COMPLETED
+
+--------------------------------------------------------------------------------
+Sequence B: Correction File Flow (Bulk Update)
+--------------------------------------------------------------------------------
+  1. Create correction CSV:
+       policyNumber,panNumber,mobileNumber,customerName
+       AUPOL100000,IFAZG4101U,9988776655,Nitin R Sharma
+
+  2. Upload correction   (3.2 or 3.3)  → Get jobId
+  3. Get status          (3.4)  → Verify fileType=correction
+  4. Trigger Processing Service (external):
+       POST /api/v1/processing/trigger?filePath={storedPath}&insurerId=HDFC_LIFE&isCorrection=true
+  5. Processing Service will call Customer/Policy PATCH APIs for each row
+
+Note: Processing Service must be running; it fetches filePath from ingestion
+      or is notified by a separate trigger mechanism.
+
+--------------------------------------------------------------------------------
+Sequence C: Exposed API End-to-End
+--------------------------------------------------------------------------------
+  1. Public upload       (4.1)  → Get jobId
+  2. Public status       (4.3)  → Verify UPLOADED
+  3. (Optional) Test auth failures (4.4, 4.5)
+
+--------------------------------------------------------------------------------
+Sequence D: Error Handling Tests
+--------------------------------------------------------------------------------
+  - Upload without file          → 400 "File is empty or missing"
+  - Upload .txt file             → 400 "Invalid file type"
+  - Get status with fake jobId   → 404 "Job not found"
+  - Update status UPLOADED→COMPLETED directly → 409 "Invalid transition"
+  - Update progress on UPLOADED  → 409 "job must be in PROCESSING state"
+
+================================================================================
+6. ERROR RESPONSES REFERENCE
+================================================================================
+
+400 Bad Request:
+  "File is empty or missing"
+  "Invalid file type. Allowed: .xls, .xlsx, .csv"
+  "File size exceeds maximum allowed: 50MB"
+  "Job not found: {jobId}"
+  "processedRecordsDelta must be positive"
+  "status is required"
+
+401 Unauthorized (Exposed API only):
+  "Missing X-API-Key header"
+  "Invalid API key"
+
+404 Not Found:
+  "Job not found: {jobId}"
+
+409 Conflict:
+  "Invalid transition: UPLOADED -> COMPLETED. Allowed: PROCESSING"
+  "Cannot update progress: job must be in PROCESSING state"
+  "No transitions allowed from terminal state: COMPLETED"
+
+500 / 503:
+  Database or internal errors (check MongoDB connection, logs)
+
+================================================================================
+7. POSTMAN TIPS
+================================================================================
+
+  1. Create environment variable:
+       baseUrl = http://localhost:8082
+       jobId   = (set from upload response)
+       apiKey  = mypolicy-customer-api-key-dev
+
+  2. Use {{baseUrl}}/api/v1/ingestion/upload in URL
+
+  3. For status: {{baseUrl}}/api/v1/ingestion/status/{{jobId}}
+
+  4. Save jobId: In upload response, use Tests tab:
+       var json = pm.response.json();
+       pm.environment.set("jobId", json.jobId);
+
+================================================================================
+8. CONFIGURATION
+================================================================================
+
+application.properties (ingestion-service):
+  server.port=8082
+  spring.data.mongodb.host=localhost
+  spring.data.mongodb.port=27017
+  spring.data.mongodb.database=mypolicy_ingestion_db
+  ingestion.customer.api-keys=mypolicy-customer-api-key-dev
+  ingestion.storage.path=storage/ingestion
+
+Override API keys via env:
+  INGESTION_CUSTOMER_API_KEYS=key1,key2
+
+================================================================================
+9. TROUBLESHOOTING
+================================================================================
+
+  - 503 / Database error:  Ensure MongoDB is running on 27017
+  - 401 on /api/public:    Add X-API-Key header with correct value
+  - File not found:         Check ingestion.storage.path; files stored as {jobId}.{ext}
+  - Port in use:            Change server.port or stop conflicting process
+
+================================================================================
+Document: Ingestion Service Unified Testing Guide | MyPolicy Backend
+Version: 1.0
+================================================================================

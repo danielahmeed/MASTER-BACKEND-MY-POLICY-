@@ -1,0 +1,298 @@
+================================================================================
+INGESTION SERVICE - POSTMAN API TESTING GUIDE
+================================================================================
+Step-by-step guide to test all Ingestion Service APIs (internal + exposed) 
+using Postman.
+
+================================================================================
+PREREQUISITES
+================================================================================
+1. Ingestion Service running on http://localhost:8082
+2. MongoDB running locally on port 27017
+3. Postman installed
+4. Sample file: Datasets/Auto_Insurance.csv (or any .csv, .xls, .xlsx up to 50MB)
+
+Start ingestion service:
+  cd MyPolicy-Backend/ingestion-service
+  mvn spring-boot:run
+
+================================================================================
+BASE URL
+================================================================================
+  http://localhost:8082
+
+================================================================================
+PART A: INTERNAL APIs (No API Key Required)
+================================================================================
+Used by BFF, Processing Service, or direct internal calls.
+No X-API-Key header needed.
+
+--------------------------------------------------------------------------------
+API 1: Upload File (Internal)
+--------------------------------------------------------------------------------
+Method:    POST
+URL:       http://localhost:8082/api/v1/ingestion/upload
+
+Headers:
+  (None required - Content-Type is set automatically for form-data)
+
+Body:
+  Type:     form-data
+  Key      | Type   | Value
+  ---------|--------|------------------------------------------
+  file     | File   | [Select your CSV/Excel file]
+  insurerId| Text   | HDFC_LIFE
+  uploadedBy| Text  | test-user
+
+Steps in Postman:
+  1. Create new request, set Method to POST
+  2. Enter URL: http://localhost:8082/api/v1/ingestion/upload
+  3. Go to Body tab
+  4. Select "form-data"
+  5. Add key "file" - change type from "Text" to "File" (dropdown)
+  6. Click "Select Files" and choose Auto_Insurance.csv
+  7. Add key "insurerId" (Text): HDFC_LIFE
+  8. Add key "uploadedBy" (Text): test-user
+  9. Click Send
+
+Expected Response (201 Created):
+  {
+    "jobId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "status": "UPLOADED"
+  }
+
+Save the jobId - you will need it for subsequent requests.
+
+--------------------------------------------------------------------------------
+API 2: Get Job Status (Internal)
+--------------------------------------------------------------------------------
+Method:    GET
+URL:       http://localhost:8082/api/v1/ingestion/status/{jobId}
+
+Replace {jobId} with the actual jobId from the upload response.
+
+Example:
+  http://localhost:8082/api/v1/ingestion/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+Steps in Postman:
+  1. Create new request, set Method to GET
+  2. Enter URL with your jobId
+  3. Click Send
+
+Expected Response (200 OK):
+  {
+    "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "UPLOADED",
+    "processedRecords": 0,
+    "totalRecords": 0,
+    "filePath": "C:/path/to/storage/ingestion/{jobId}.csv",
+    "insurerId": "HDFC_LIFE",
+    "createdAt": "2024-02-18T10:30:00",
+    "updatedAt": "2024-02-18T10:30:00"
+  }
+
+--------------------------------------------------------------------------------
+API 3: Update Progress (Internal - Processing Service)
+--------------------------------------------------------------------------------
+Method:    PATCH
+URL:       http://localhost:8082/api/v1/ingestion/{jobId}/progress
+
+Headers:
+  Content-Type: application/json
+
+Body (raw JSON):
+  {
+    "processedRecordsDelta": 10
+  }
+
+Note: Job must be in PROCESSING state. processedRecordsDelta must be positive.
+
+Steps in Postman:
+  1. Create new request, set Method to PATCH
+  2. Enter URL with your jobId
+  3. Headers tab: Add Content-Type: application/json
+  4. Body tab: Select "raw", choose "JSON", paste the JSON above
+  5. Click Send
+
+Expected Response: 204 No Content (empty body)
+
+--------------------------------------------------------------------------------
+API 4: Update Status (Internal - Processing Service)
+--------------------------------------------------------------------------------
+Method:    PATCH
+URL:       http://localhost:8082/api/v1/ingestion/{jobId}/status
+
+Headers:
+  Content-Type: application/json
+
+Body (raw JSON) - Examples:
+
+  To transition UPLOADED → PROCESSING:
+  {
+    "status": "PROCESSING"
+  }
+
+  To transition PROCESSING → COMPLETED:
+  {
+    "status": "COMPLETED"
+  }
+
+  To transition PROCESSING → FAILED:
+  {
+    "status": "FAILED",
+    "failureReason": "Validation failed: invalid date format in row 5"
+  }
+
+Allowed status values: UPLOADED, PROCESSING, COMPLETED, FAILED
+State machine: UPLOADED → PROCESSING → COMPLETED | FAILED
+
+Steps in Postman:
+  1. Create new request, set Method to PATCH
+  2. Enter URL with your jobId
+  3. Headers tab: Add Content-Type: application/json
+  4. Body tab: Select "raw", choose "JSON", paste the JSON
+  5. Click Send
+
+Expected Response: 204 No Content (empty body)
+
+================================================================================
+PART B: EXPOSED / PUBLIC API (X-API-Key Required)
+================================================================================
+Used by external customers. Requires X-API-Key header.
+Default dev API key: mypolicy-customer-api-key-dev
+
+--------------------------------------------------------------------------------
+API 5: Upload File (Exposed - Customer API)
+--------------------------------------------------------------------------------
+Method:    POST
+URL:       http://localhost:8082/api/public/v1/ingestion/upload
+
+Headers:
+  X-API-Key: mypolicy-customer-api-key-dev
+
+Body:
+  Type:     form-data
+  Key      | Type   | Value
+  ---------|--------|------------------------------------------
+  file     | File   | [Select your CSV/Excel file]
+  insurerId| Text   | HDFC_LIFE
+  uploadedBy| Text  | customer-user-001
+
+Steps in Postman:
+  1. Create new request, set Method to POST
+  2. Enter URL: http://localhost:8082/api/public/v1/ingestion/upload
+  3. Headers tab: Add key "X-API-Key", value "mypolicy-customer-api-key-dev"
+  4. Body tab: Select "form-data"
+  5. Add key "file" (File type), select your CSV/Excel
+  6. Add key "insurerId" (Text): HDFC_LIFE
+  7. Add key "uploadedBy" (Text): customer-user-001
+  8. Click Send
+
+Expected Response (201 Created):
+  {
+    "jobId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "status": "UPLOADED"
+  }
+
+--------------------------------------------------------------------------------
+API 6: Get Job Status (Exposed - Customer API)
+--------------------------------------------------------------------------------
+Method:    GET
+URL:       http://localhost:8082/api/public/v1/ingestion/status/{jobId}
+
+Headers:
+  X-API-Key: mypolicy-customer-api-key-dev
+
+Steps in Postman:
+  1. Create new request, set Method to GET
+  2. Enter URL with your jobId
+  3. Headers tab: Add X-API-Key: mypolicy-customer-api-key-dev
+  4. Click Send
+
+Expected Response (200 OK):
+  Same as API 2 (JobStatusResponse JSON)
+
+--------------------------------------------------------------------------------
+Authentication Tests (Exposed API)
+--------------------------------------------------------------------------------
+Test 1 - Without API Key (Should fail):
+  Method: POST
+  URL: http://localhost:8082/api/public/v1/ingestion/upload
+  Headers: (none)
+  Body: file, insurerId, uploadedBy
+
+  Expected: 401 Unauthorized
+  Response: {"error":"Missing X-API-Key header"}
+
+Test 2 - With Invalid API Key (Should fail):
+  Method: POST
+  URL: http://localhost:8082/api/public/v1/ingestion/upload
+  Headers: X-API-Key: wrong-key-123
+  Body: file, insurerId, uploadedBy
+
+  Expected: 401 Unauthorized
+  Response: {"error":"Invalid API key"}
+
+================================================================================
+ERROR RESPONSES
+================================================================================
+400 Bad Request:
+  {"error":"File is empty or missing"}
+  {"error":"Invalid file type. Allowed: .xls, .xlsx, .csv"}
+  {"error":"File size exceeds maximum allowed: 50MB"}
+  {"error":"Job not found: {jobId}"}
+  {"error":"processedRecordsDelta must be positive"}
+  {"error":"status is required"}
+
+401 Unauthorized (Exposed API only):
+  {"error":"Missing X-API-Key header"}
+  {"error":"Invalid API key"}
+
+404 Not Found:
+  (If jobId does not exist)
+  {"error":"Job not found: {jobId}"}
+
+409 Conflict:
+  {"error":"Invalid transition: UPLOADED -> COMPLETED. Allowed: PROCESSING"}
+  {"error":"Cannot update progress: job must be in PROCESSING state"}
+  {"error":"No transitions allowed from terminal state: COMPLETED"}
+
+500 Internal Server Error:
+  {"error":"Internal server error"}
+  (Often indicates MongoDB connection issue)
+
+503 Service Unavailable:
+  {"error":"Database error: ..."}
+  (MongoDB connection/operation failed)
+
+================================================================================
+RECOMMENDED TEST SEQUENCE
+================================================================================
+1. Upload file (Internal API 1 or Exposed API 5)
+2. Get status (API 2 or 6) - verify UPLOADED
+3. Update status to PROCESSING (API 4)
+4. Update progress (API 3) - add processedRecordsDelta
+5. Get status again - verify processedRecords updated
+6. Update status to COMPLETED (API 4)
+7. Get status - verify final state
+
+For Exposed API: Always include X-API-Key header in every request.
+
+================================================================================
+POSTMAN COLLECTION TIPS
+================================================================================
+1. Create an environment variable "baseUrl" = http://localhost:8082
+2. Create variable "jobId" - set from upload response, use in status/progress URLs
+3. Create variable "apiKey" = mypolicy-customer-api-key-dev for exposed API
+4. For file upload: Use {{baseUrl}}/api/v1/ingestion/upload or .../api/public/v1/ingestion/upload
+
+================================================================================
+FILE REQUIREMENTS
+================================================================================
+- Allowed extensions: .csv, .xls, .xlsx
+- Max size: 50 MB
+- UTF-8 encoding recommended for CSV
+
+================================================================================
+Document version: 1.0 | MyPolicy Ingestion Service
+================================================================================

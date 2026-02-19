@@ -38,13 +38,18 @@ public class IngestionController {
   public ResponseEntity<UploadResponse> uploadFile(
       @RequestParam("file") MultipartFile file,
       @RequestParam("insurerId") String insurerId,
-      @RequestParam("uploadedBy") String uploadedBy) {
+      @RequestParam("uploadedBy") String uploadedBy,
+      @RequestParam(value = "fileType", required = false) String fileType) {
 
     log.info("[Ingestion API] POST /upload - insurerId={}, uploadedBy={}", insurerId, uploadedBy);
 
     try {
+<<<<<<< HEAD:MyPolicy-Backend/ingestion-service/src/main/java/com/mypolicy/ingestion/controller/IngestionController.java
+      UploadResponse response = ingestionService.uploadFile(file, insurerId, uploadedBy, fileType);
+=======
       UploadResponse response = ingestionService.uploadFile(file, insurerId, uploadedBy);
       log.info("[Ingestion API] Upload successful: jobId={}", response.getJobId());
+>>>>>>> upstream/main:MyPolicy-Backend/data-pipeline-service/src/main/java/com/mypolicy/pipeline/ingestion/controller/IngestionController.java
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
     } catch (IllegalArgumentException e) {
       log.warn("[Ingestion API] Upload validation failed: {}", e.getMessage());

@@ -1,5 +1,6 @@
 package com.mypolicy.customer.service.impl;
 
+import com.mypolicy.customer.dto.CustomerCorrectionRequest;
 import com.mypolicy.customer.dto.CustomerRegistrationRequest;
 import com.mypolicy.customer.dto.CustomerResponse;
 import com.mypolicy.customer.dto.CustomerUpdateRequest;
@@ -61,6 +62,13 @@ public class CustomerServiceImpl implements CustomerService {
   }
 
   @Override
+  public CustomerResponse getCustomerByPanNumber(String panNumber) {
+    return customerRepository.findByPanNumber(panNumber)
+        .map(this::mapToResponse)
+        .orElseThrow(() -> new RuntimeException("Customer not found with PAN: " + panNumber));
+  }
+
+  @Override
   public CustomerResponse getCustomerById(String customerId) {
     return customerRepository.findById(customerId)
         .map(this::mapToResponse)
@@ -69,6 +77,34 @@ public class CustomerServiceImpl implements CustomerService {
 
   @Override
   @Transactional
+<<<<<<< HEAD
+  public CustomerResponse correctCustomer(String customerId, CustomerCorrectionRequest request) {
+    Customer customer = customerRepository.findById(customerId)
+        .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+
+    if (request.getFirstName() != null && !request.getFirstName().isBlank())
+      customer.setFirstName(request.getFirstName());
+    if (request.getLastName() != null && !request.getLastName().isBlank())
+      customer.setLastName(request.getLastName());
+    if (request.getMobileNumber() != null && !request.getMobileNumber().isBlank()) {
+      if (customerRepository.existsByMobileNumber(request.getMobileNumber())
+          && !request.getMobileNumber().equals(customer.getMobileNumber()))
+        throw new RuntimeException("Mobile number already in use");
+      customer.setMobileNumber(request.getMobileNumber());
+    }
+    if (request.getEmail() != null && !request.getEmail().isBlank()) {
+      if (customerRepository.existsByEmail(request.getEmail())
+          && !request.getEmail().equals(customer.getEmail()))
+        throw new RuntimeException("Email already in use");
+      customer.setEmail(request.getEmail());
+    }
+    if (request.getAddress() != null) customer.setAddress(request.getAddress());
+    if (request.getPanNumber() != null) customer.setPanNumber(request.getPanNumber());
+    if (request.getDateOfBirth() != null) customer.setDateOfBirth(request.getDateOfBirth());
+
+    Customer saved = customerRepository.save(customer);
+    return mapToResponse(saved);
+=======
   public CustomerResponse updateCustomer(String customerId, CustomerUpdateRequest request) {
     Customer customer = customerRepository.findById(customerId)
         .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
@@ -122,6 +158,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     Customer updated = customerRepository.save(customer);
     return mapToResponse(updated);
+>>>>>>> upstream/main
   }
 
   private CustomerResponse mapToResponse(Customer c) {

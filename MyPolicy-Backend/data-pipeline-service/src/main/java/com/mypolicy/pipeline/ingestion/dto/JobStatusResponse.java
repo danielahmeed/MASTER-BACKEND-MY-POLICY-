@@ -14,6 +14,7 @@ public class JobStatusResponse {
   private int totalRecords;
   private String filePath;
   private String insurerId;
+  private String fileType;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
 
@@ -21,14 +22,15 @@ public class JobStatusResponse {
   }
 
   public JobStatusResponse(String jobId, IngestionStatus status, int processedRecords,
-      int totalRecords, String filePath, String insurerId, LocalDateTime createdAt,
-      LocalDateTime updatedAt) {
+      int totalRecords, String filePath, String insurerId, String fileType,
+      LocalDateTime createdAt, LocalDateTime updatedAt) {
     this.jobId = jobId;
     this.status = status;
     this.processedRecords = processedRecords;
     this.totalRecords = totalRecords;
     this.filePath = filePath;
     this.insurerId = insurerId;
+    this.fileType = fileType;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -45,6 +47,8 @@ public class JobStatusResponse {
   public void setFilePath(String filePath) { this.filePath = filePath; }
   public String getInsurerId() { return insurerId; }
   public void setInsurerId(String insurerId) { this.insurerId = insurerId; }
+  public String getFileType() { return fileType; }
+  public void setFileType(String fileType) { this.fileType = fileType; }
   public LocalDateTime getCreatedAt() { return createdAt; }
   public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
   public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -1,5 +1,6 @@
 package com.mypolicy.policy.service;
 
+import com.mypolicy.policy.dto.PolicyCorrectionRequest;
 import com.mypolicy.policy.dto.PolicyRequest;
 import com.mypolicy.policy.model.Policy;
 import com.mypolicy.policy.model.PolicyStatus;
@@ -12,4 +13,8 @@ public interface PolicyService {
   List<Policy> getPoliciesByCustomerId(String customerId);
 
   Policy getPolicyById(String id);
+
+  Policy getPolicyByNumberAndInsurerId(String policyNumber, String insurerId);
+
+  Policy correctPolicy(String policyId, PolicyCorrectionRequest request);
 }

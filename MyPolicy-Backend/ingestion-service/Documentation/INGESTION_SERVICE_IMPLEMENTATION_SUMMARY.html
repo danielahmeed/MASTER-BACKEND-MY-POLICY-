@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ingestion Service — Implementation Summary | MyPolicy Backend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-text: #1e293b;
+      --color-text-muted: #64748b;
+      --color-primary: #0f766e;
+      --color-primary-light: #ccfbf1;
+      --color-accent: #0369a1;
+      --color-border: #e2e8f0;
+      --color-code-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Source Sans 3', -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--color-text);
+      background: var(--color-bg);
+      margin: 0;
+      padding: 2rem;
+      max-width: 850px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 0 0 0.5rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 3px solid var(--color-primary);
+    }
+    .subtitle { font-size: 0.95rem; color: var(--color-text-muted); margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--color-text);
+      margin: 2rem 0 1rem 0;
+      padding-left: 0.5rem;
+      border-left: 4px solid var(--color-primary);
+    }
+    h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-accent); margin: 1.25rem 0 0.6rem 0; }
+    h4 { font-size: 0.98rem; font-weight: 600; margin: 1rem 0 0.5rem 0; }
+    p { margin: 0 0 0.6rem 0; }
+    ul, ol { margin: 0 0 1rem 0; padding-left: 1.5rem; }
+    li { margin-bottom: 0.3rem; }
+    code, pre {
+      font-family: 'Source Code Pro', Consolas, monospace;
+      font-size: 0.85em;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      padding: 0.15em 0.4em;
+    }
+    pre {
+      display: block;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      margin: 0.8rem 0;
+      border-radius: 6px;
+    }
+    pre code { padding: 0; border: none; background: none; }
+    .feature-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.8rem 0;
+      font-size: 0.92em;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td { padding: 0.5rem 0.9rem; text-align: left; border-bottom: 1px solid var(--color-border); }
+    th { background: var(--color-primary-light); font-weight: 600; color: var(--color-primary); }
+    tr:last-child td { border-bottom: none; }
+    hr { border: none; border-top: 1px solid var(--color-border); margin: 1.5rem 0; }
+    .footer { margin-top: 2.5rem; padding-top: 1rem; font-size: 0.85em; color: var(--color-text-muted); }
+  </style>
+</head>
+<body>
+  <h1>Ingestion Service — Implementation Summary</h1>
+  <p class="subtitle">A comprehensive overview of what has been built, why it matters, and how it was implemented.</p>
+
+  <h2>1. Executive Summary</h2>
+  <p>The Ingestion Service is the entry point for policy data in the MyPolicy platform. It receives CSV and Excel files from insurers (or internal systems), validates them, stores them on disk, and creates job records in MongoDB. The Processing Service later reads these files and transforms the data into Customer and Policy records.</p>
+  <p>This document describes all implemented features, their business significance, and the technical approach used.</p>
+
+  <hr>
+  <h2>2. What Has Been Done</h2>
+
+  <h3>2.1 Core File Upload & Job Lifecycle</h3>
+  <div class="feature-box">
+    <h4>Features</h4>
+    <ul>
+      <li><strong>Upload:</strong> Accept CSV (.csv) and Excel (.xls, .xlsx) files up to 50 MB</li>
+      <li><strong>Validation:</strong> File presence, size, type, and extension checks</li>
+      <li><strong>Storage:</strong> Files saved under <code>storage/ingestion/{jobId}.{ext}</code></li>
+      <li><strong>Job creation:</strong> MongoDB document with status UPLOADED, insurerId, filePath, uploadedBy</li>
+      <li><strong>Status retrieval:</strong> GET job status by jobId</li>
+      <li><strong>Progress updates:</strong> PATCH to increment processed record count (when job is PROCESSING)</li>
+      <li><strong>Status transitions:</strong> PATCH to move job through UPLOADED → PROCESSING → COMPLETED | FAILED</li>
+    </ul>
+  </div>
+
+  <h3>2.2 Data Correction Support (Delta / Correction Files)</h3>
+  <div class="feature-box">
+    <h4>Features</h4>
+    <ul>
+      <li><strong>fileType parameter:</strong> Optional <code>fileType=correction</code> on upload to mark delta files</li>
+      <li><strong>Filename convention:</strong> Files containing <code>_correction</code> in name (e.g., Auto_Insurance_correction.csv) are auto-detected as correction</li>
+      <li><strong>Persistence:</strong> <code>fileType</code> stored in IngestionJob (values: "normal" or "correction")</li>
+      <li><strong>Downstream signal:</strong> Processing Service uses fileType to decide INSERT vs UPDATE logic</li>
+    </ul>
+  </div>
+
+  <h3>2.3 Exposed Customer API (X-API-Key)</h3>
+  <div class="feature-box">
+    <h4>Features</h4>
+    <ul>
+      <li><strong>Public endpoints:</strong> POST /api/public/v1/ingestion/upload and GET /api/public/v1/ingestion/status/{jobId}</li>
+      <li><strong>Authentication:</strong> X-API-Key header required; configurable keys via <code>ingestion.customer.api-keys</code></li>
+      <li><strong>Filter:</strong> ApiKeyAuthFilter intercepts /api/public/* before controller</li>
+      <li><strong>401 responses:</strong> "Missing X-API-Key header" or "Invalid API key" when auth fails</li>
+      <li><strong>CORS:</strong> PublicApiCorsConfig for cross-origin requests from customer apps</li>
+    </ul>
+  </div>
+
+  <h3>2.4 Dual API Surface</h3>
+  <table>
+    <tr><th>API</th><th>Path</th><th>Auth</th><th>Use Case</th></tr>
+    <tr><td>Internal</td><td>/api/v1/ingestion/...</td><td>None (BFF/JWT)</td><td>BFF, Processing Service</td></tr>
+    <tr><td>Exposed</td><td>/api/public/v1/ingestion/...</td><td>X-API-Key</td><td>External customers, insurers</td></tr>
+  </table>
+
+  <h3>2.5 Robust Error Handling</h3>
+  <ul>
+    <li><strong>GlobalExceptionHandler:</strong> Centralized handling for IllegalArgumentException (400), IllegalStateException (409), MongoException (503), RuntimeException (500)</li>
+    <li><strong>State machine:</strong> Enforced transitions; no invalid jumps (e.g., UPLOADED → COMPLETED is rejected)</li>
+    <li><strong>Validation:</strong> processedRecordsDelta must be positive; status required on status update</li>
+  </ul>
+
+  <hr>
+  <h2>3. Significance</h2>
+
+  <h3>3.1 Business Value</h3>
+  <ul>
+    <li><strong>Single intake point:</strong> All policy data enters through one service, simplifying integration and monitoring</li>
+    <li><strong>Auditability:</strong> Job ID, upload timestamp, uploadedBy, and filePath provide traceability for compliance</li>
+    <li><strong>Correction without re-ingestion:</strong> Bulk fixes (e.g., phone format) without re-uploading entire datasets</li>
+    <li><strong>External partner readiness:</strong> Exposed API with API keys enables insurers to push data directly</li>
+  </ul>
+
+  <h3>3.2 Architectural Significance</h3>
+  <ul>
+    <li><strong>Separation of concerns:</strong> Ingestion handles only intake; Processing Service handles parsing/transform</li>
+    <li><strong>Stateless design:</strong> All job state in MongoDB; service can scale horizontally</li>
+    <li><strong>Clear API boundaries:</strong> Internal vs public APIs with appropriate security</li>
+  </ul>
+
+  <hr>
+  <h2>4. How It Was Done</h2>
+
+  <h3>4.1 Technology Stack</h3>
+  <ul>
+    <li><strong>Spring Boot 3.1.5</strong> — Web, validation</li>
+    <li><strong>Spring Data MongoDB</strong> — Job storage</li>
+    <li><strong>MongoDB</strong> — Local (localhost:27017) or Atlas via env</li>
+    <li><strong>Jakarta Servlet</strong> — OncePerRequestFilter for API key</li>
+  </ul>
+
+  <h3>4.2 Key Components & Implementation</h3>
+
+  <h4>Controllers</h4>
+  <ul>
+    <li><strong>IngestionController</strong> — /api/v1/ingestion: upload (with optional fileType), status, progress, status update</li>
+    <li><strong>PublicIngestionController</strong> — /api/public/v1/ingestion: upload, status (delegates to IngestionService)</li>
+  </ul>
+
+  <h4>Service Layer</h4>
+  <ul>
+    <li><strong>IngestionService</strong>:
+      <ul>
+        <li><code>uploadFile()</code> — validate → resolve fileType → save file → create job</li>
+        <li><code>resolveFileType()</code> — param "correction" or filename contains "_correction"</li>
+        <li><code>getJobStatus()</code> — fetch from repo, map to JobStatusResponse</li>
+        <li><code>updateProgress()</code> — only when status=PROCESSING</li>
+        <li><code>updateStatus()</code> — validateStateTransition() enforces state machine</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h4>Security</h4>
+  <ul>
+    <li><strong>ApiKeyAuthFilter</strong> — Extends OncePerRequestFilter; applies only to /api/public/*</li>
+    <li><strong>ApiKeyFilterConfig</strong> — FilterRegistrationBean wires filter with api-keys from config</li>
+  </ul>
+
+  <h4>Data Model</h4>
+  <ul>
+    <li><strong>IngestionJob</strong> — @Document; fields: jobId, insurerId, filePath, fileType, status, totalRecords, processedRecords, uploadedBy, failureReason, createdAt, updatedAt</li>
+    <li><strong>IngestionStatus</strong> — UPLOADED, PROCESSING, COMPLETED, FAILED</li>
+  </ul>
+
+  <h3>4.3 Configuration</h3>
+  <pre><code>server.port=8082
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=mypolicy_ingestion_db
+ingestion.customer.api-keys=mypolicy-customer-api-key-dev
+ingestion.storage.path=storage/ingestion
+spring.servlet.multipart.max-file-size=50MB</code></pre>
+
+  <h3>4.4 File Structure</h3>
+  <table>
+    <tr><th>Package</th><th>Files</th></tr>
+    <tr><td>controller</td><td>IngestionController, PublicIngestionController</td></tr>
+    <tr><td>service</td><td>IngestionService</td></tr>
+    <tr><td>model</td><td>IngestionJob, IngestionStatus, ValidationError</td></tr>
+    <tr><td>dto</td><td>UploadResponse, JobStatusResponse, ProgressUpdateRequest, StatusUpdateRequest</td></tr>
+    <tr><td>config</td><td>ApiKeyAuthFilter, ApiKeyFilterConfig, PublicApiCorsConfig</td></tr>
+    <tr><td>repository</td><td>IngestionJobRepository</td></tr>
+    <tr><td>exception</td><td>GlobalExceptionHandler</td></tr>
+  </table>
+
+  <hr>
+  <h2>5. Integration Points</h2>
+  <ul>
+    <li><strong>BFF:</strong> Calls internal /api/v1/ingestion/upload and status on behalf of authenticated users</li>
+    <li><strong>Processing Service:</strong> Receives file path (via trigger/Kafka); calls PATCH progress and status; uses fileType for correction mode</li>
+    <li><strong>External customers:</strong> Call /api/public/v1/ingestion with X-API-Key</li>
+  </ul>
+
+  <hr>
+  <h2>6. Documentation & Artifacts</h2>
+  <ul>
+    <li><strong>INGESTION_SERVICE_TESTING_GUIDE.txt/html/pdf</strong> — Step-by-step API testing</li>
+    <li><strong>INSURER_CSV_SCHEMA</strong> — Required columns and formats</li>
+    <li><strong>Datasets/Auto_Insurance_correction.csv</strong> — Sample correction file</li>
+  </ul>
+
+  <div class="footer">
+    <strong>Document:</strong> Ingestion Service Implementation Summary | MyPolicy Backend<br>
+    <strong>Version:</strong> 1.0
+  </div>
+</body>
+</html>

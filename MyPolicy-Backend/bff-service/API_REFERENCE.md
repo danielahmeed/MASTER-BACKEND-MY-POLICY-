@@ -113,7 +113,22 @@ Response: 200 OK
 
 ---
 
-## File Upload Endpoints
+---
+
+## Customer Ingestion API (Public / External)
+
+**Unified API for external customers to upload CSV/Excel files.** Requires `X-API-Key` header.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/public/v1/ingestion/upload` | POST | Upload file (multipart) |
+| `/api/public/v1/ingestion/status/{jobId}` | GET | Get job status |
+
+See [CUSTOMER_INGESTION_API.md](./CUSTOMER_INGESTION_API.md) for full documentation and examples.
+
+---
+
+## File Upload Endpoints (BFF Internal)
 
 ### Upload Insurer File
 ```http

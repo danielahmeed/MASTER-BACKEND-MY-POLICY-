@@ -1,0 +1,253 @@
+================================================================================
+MONGODB ATLAS SETUP GUIDE - INGESTION SERVICE
+================================================================================
+Complete step-by-step guide to set up MongoDB Atlas (cloud) for the Ingestion
+Service, starting from account creation through cluster setup and application
+connection.
+
+================================================================================
+STEP 1: CREATE MONGODB ATLAS ACCOUNT
+================================================================================
+
+1. Open a web browser and go to: https://www.mongodb.com/cloud/atlas
+
+2. Click "Try Free" or "Get started free"
+
+3. Sign up using one of:
+   - Sign in with Google
+   - Sign in with GitHub
+   - Create an account with email
+
+4. Complete registration (verify email if required)
+
+5. Accept Terms of Service when prompted
+
+
+================================================================================
+STEP 2: CREATE ORGANIZATION AND PROJECT (First-time setup)
+================================================================================
+
+1. After login, you may see "Build a database" - click it
+
+2. Organization:
+   - Use the default organization name, OR
+   - Create new: e.g. "MyPolicy-Org"
+
+3. Project:
+   - Use the default project name, OR
+   - Create new: e.g. "MyPolicy-Backend"
+
+4. Click "Next"
+
+
+================================================================================
+STEP 3: CREATE A CLUSTER
+================================================================================
+
+1. Choose Cluster Type:
+   - Select "M0 Sandbox" (FREE tier)
+   - This provides 512 MB storage - sufficient for ingestion jobs
+
+2. Cloud Provider & Region:
+   - Provider: AWS (or GCP / Azure)
+   - Region: Choose closest to you (e.g. ap-south-1 for Mumbai)
+
+3. Cluster Name (optional):
+   - Default: Cluster0 (or name it "ingestion-cluster")
+
+4. Click "Create Deployment" or "Create Cluster"
+
+5. Wait 3-5 minutes for cluster status to change from "Creating" to "Active"
+
+6. Your cluster is now ready
+
+
+================================================================================
+STEP 4: CREATE DATABASE USER
+================================================================================
+
+1. A popup "Security Quickstart" may appear - if so, skip to step 2
+
+2. Create Database User:
+   - Authentication Method: Password
+   - Username: mypolicy_ingestion (or your choice)
+   - Password: 
+     a. Click "Autogenerate Secure Password"
+     b. COPY the password immediately - you won't see it again
+     c. Paste it somewhere safe (e.g. password manager)
+   - Database User Privileges: "Read and write to any database"
+     (Or "Atlas admin" for development - full access)
+
+3. Click "Create User" or "Finish and Close"
+
+4. If you missed copying the password: create a new user and try again
+
+
+================================================================================
+STEP 5: CONFIGURE NETWORK ACCESS
+================================================================================
+
+1. In "Where would you like to connect from?" section:
+   - Option A: "Add My Current IP Address" - allows only your machine
+   - Option B: "Allow Access from Anywhere" (0.0.0.0/0) - allows all IPs
+     (Use for dev/testing; avoid for production)
+
+2. Click "Finish and Close" or "Add Entry"
+
+3. If the popup was skipped, go to Network Access (left sidebar):
+   - Click "Add IP Address"
+   - Add Current IP Address, OR
+   - Add 0.0.0.0/0 to allow all
+   - Click "Confirm"
+
+
+================================================================================
+STEP 6: GET CONNECTION STRING (Connect to Application)
+================================================================================
+
+1. On your cluster dashboard, click the "Connect" button
+
+2. Choose "Drivers" (or "Connect your application")
+
+3. Driver Options:
+   - Driver: Java
+   - Version: 4.5 or later (5.x is fine)
+
+4. Copy the connection string shown. It looks like:
+   mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+
+5. Customize the connection string:
+   - Replace <username> with your database username (e.g. mypolicy_ingestion)
+   - Replace <password> with your actual password
+   - Add database name: insert /mypolicy_ingestion_db before the ?
+
+   Final format:
+   mongodb+srv://mypolicy_ingestion:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/mypolicy_ingestion_db?retryWrites=true&w=majority
+
+6. IMPORTANT - Password special characters (URL encode):
+   - @  ->  %40
+   - #  ->  %23
+   - $  ->  %24
+   - %  ->  %25
+   - &  ->  %26
+
+   Example: If password is MyP@ss123, use MyP%40ss123 in the URI
+
+
+================================================================================
+STEP 7: CREATE DATABASE AND COLLECTION (Optional)
+================================================================================
+
+Atlas creates the database automatically on first write. To pre-create:
+
+1. On your cluster, click "Browse Collections"
+
+2. Click "Add My Own Data"
+
+3. Database Name: mypolicy_ingestion_db
+
+4. Collection Name: ingestion_jobs
+
+5. Click "Create"
+
+(You can skip this - Ingestion Service will create it when it first writes)
+
+
+================================================================================
+STEP 8: UPDATE INGESTION SERVICE CONFIGURATION
+================================================================================
+
+1. Open file:
+   MyPolicy-Backend/ingestion-service/src/main/resources/application.properties
+
+2. Replace or add the MongoDB configuration:
+
+   # MongoDB Atlas - Replace with your connection string
+   spring.data.mongodb.uri=mongodb+srv://mypolicy_ingestion:YOUR_PASSWORD@cluster0.YOUR_CLUSTER_ID.mongodb.net/mypolicy_ingestion_db?retryWrites=true&w=majority
+
+3. Remove or comment out the local MongoDB config:
+   # spring.data.mongodb.host=localhost
+   # spring.data.mongodb.port=27017
+   # spring.data.mongodb.database=mypolicy_ingestion_db
+
+4. Save the file
+
+
+================================================================================
+STEP 9: TEST THE CONNECTION
+================================================================================
+
+1. Start the Ingestion Service:
+   cd MyPolicy-Backend/ingestion-service
+   mvn spring-boot:run
+
+2. Check the logs for:
+   - "MongoClient with metadata ... created"
+   - No connection errors
+
+3. Test upload (from ingestion-service directory):
+   curl.exe -X POST -F "file=@Datasets/Auto_Insurance.csv" -F "insurerId=HDFC_LIFE" -F "uploadedBy=test" http://localhost:8082/api/v1/ingestion/upload
+
+4. Verify in Atlas:
+   - Go to your cluster
+   - Click "Browse Collections"
+   - Open mypolicy_ingestion_db > ingestion_jobs
+   - You should see the new job document
+
+
+================================================================================
+STEP 10: SHARING ACCESS WITH OTHERS
+================================================================================
+
+Option A - Same connection string:
+  1. Share the connection string securely with your team
+  2. Each person must have their IP added in Network Access
+  3. Or use 0.0.0.0/0 (allow all) for easy dev access
+
+Option B - Separate users (recommended):
+  1. Go to Database Access (left sidebar)
+  2. Click "Add New Database User"
+  3. Create username/password for each team member
+  4. Grant "Read and write to any database"
+  5. Share each person's connection string (with their credentials)
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Connection timeout:
+  - Add your IP address in Network Access
+  - Or use 0.0.0.0/0 for testing
+
+Authentication failed:
+  - Verify username and password
+  - Ensure password special characters are URL-encoded
+
+Cluster not found:
+  - Double-check the connection string from Atlas "Connect"
+  - Ensure cluster is in "Active" state
+
+SSL/TLS errors:
+  - Atlas uses TLS by default
+  - Ensure Java/MongoDB driver is up to date
+
+
+================================================================================
+CHECKLIST
+================================================================================
+
+[ ] Atlas account created
+[ ] Cluster (M0) created and active
+[ ] Database user created, password saved
+[ ] Network Access configured (IP whitelist)
+[ ] Connection string obtained and customized
+[ ] application.properties updated
+[ ] Ingestion Service starts successfully
+[ ] Test upload works
+[ ] Data visible in Atlas Collections
+
+
+================================================================================
+END OF GUIDE
+================================================================================

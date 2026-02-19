@@ -1,5 +1,6 @@
 package com.mypolicy.policy.service.impl;
 
+import com.mypolicy.policy.dto.PolicyCorrectionRequest;
 import com.mypolicy.policy.dto.PolicyRequest;
 import com.mypolicy.policy.model.Policy;
 import com.mypolicy.policy.model.PolicyStatus;
@@ -43,8 +44,30 @@ public class PolicyServiceImpl implements PolicyService {
   }
 
   @Override
+  public Policy getPolicyByNumberAndInsurerId(String policyNumber, String insurerId) {
+    return repository.findByPolicyNumberAndInsurerId(policyNumber, insurerId)
+        .orElseThrow(() -> new RuntimeException("Policy not found: " + policyNumber + ", " + insurerId));
+  }
+
+  @Override
   public Policy getPolicyById(String id) {
     return repository.findById(id)
         .orElseThrow(() -> new RuntimeException("Policy not found"));
+  }
+
+  @Override
+  public Policy correctPolicy(String policyId, PolicyCorrectionRequest request) {
+    Policy policy = repository.findById(policyId)
+        .orElseThrow(() -> new RuntimeException("Policy not found: " + policyId));
+
+    if (request.getCustomerId() != null && !request.getCustomerId().isBlank())
+      policy.setCustomerId(request.getCustomerId());
+    if (request.getPlanName() != null) policy.setPlanName(request.getPlanName());
+    if (request.getPremiumAmount() != null) policy.setPremiumAmount(request.getPremiumAmount());
+    if (request.getSumAssured() != null) policy.setSumAssured(request.getSumAssured());
+    if (request.getStartDate() != null) policy.setStartDate(request.getStartDate());
+    if (request.getEndDate() != null) policy.setEndDate(request.getEndDate());
+
+    return repository.save(policy);
   }
 }

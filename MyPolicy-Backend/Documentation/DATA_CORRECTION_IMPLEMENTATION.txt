@@ -1,0 +1,138 @@
+================================================================================
+DATA CORRECTION STRATEGIES - IMPLEMENTATION SUMMARY
+================================================================================
+
+Both strategies from DATA_CORRECTION_STRATEGIES.pdf have been implemented.
+
+================================================================================
+STRATEGY 1: Delta/Correction File
+================================================================================
+
+INGESTION SERVICE (Port 8082)
+-----------------------------
+- IngestionJob: added "fileType" field ("normal" | "correction")
+- Upload APIs accept optional fileType=correction parameter
+- Auto-detect: filename containing "_correction" (e.g. data_correction.csv)
+
+Upload correction file:
+  POST /api/v1/ingestion/upload
+  POST /api/public/v1/ingestion/upload  (with X-API-Key)
+
+  Form-data: file, insurerId, uploadedBy, fileType=correction
+  OR: use filename like "batch_correction.csv"
+
+  Response: jobId, status, fileType (in GET /status)
+
+PROCESSING SERVICE (Port 8084)
+------------------------------
+- Trigger with isCorrection=true for correction mode
+- Reads CSV/Excel, matches by policyNumber + insurerId
+- For each row: PATCH /customers/{id}, PATCH /policies/{id}
+- Skips rows where policy not found
+
+  POST /api/v1/processing/trigger
+  Params: filePath, insurerId, policyType, isCorrection=true
+
+Correction file format:
+  - Required: policyNumber (or Policy Number, PolicyNum), insurerId from param
+  - Optional corrected columns: mobileNumber, customerName, email, address,
+    planName, etc.
+
+================================================================================
+STRATEGY 2: Correction/Patch API
+================================================================================
+
+CUSTOMER SERVICE (Port 8081)
+----------------------------
+  PATCH /api/v1/customers/{customerId}
+  Content-Type: application/json
+
+  Body (all optional except reason):
+  {
+    "firstName": "Amit",
+    "lastName": "Ramesh Kulkarni",
+    "mobileNumber": "9988776655",
+    "email": "amit@example.com",
+    "address": "123 New St",
+    "panNumber": "ABCDE1234F",
+    "dateOfBirth": "1990-05-15",
+    "reason": "Customer verified change during support call"
+  }
+
+  GET /api/v1/customers/by-pan/{panNumber}
+  (New: find customer by PAN for correction lookups)
+
+POLICY SERVICE (Port 8085)
+--------------------------
+  PATCH /api/v1/policies/{id}
+  Content-Type: application/json
+
+  Body (all optional except reason):
+  {
+    "customerId": "cust_xxx",
+    "planName": "Enhanced Plan",
+    "premiumAmount": 25000,
+    "sumAssured": 500000,
+    "startDate": "2024-01-01",
+    "endDate": "2034-01-01",
+    "reason": "Middle name addition – document verified"
+  }
+
+  GET /api/v1/policies/search?policyNumber=X&insurerId=Y
+  (New: find policy by number + insurer for correction lookups)
+
+================================================================================
+POSTMAN EXAMPLES
+================================================================================
+
+Customer correction:
+  PATCH http://localhost:8081/api/v1/customers/cust_7x9k2
+  {"mobileNumber": "9988776655", "reason": "Customer verified change"}
+
+Policy correction:
+  PATCH http://localhost:8085/api/v1/policies/pol_3f8k1
+  {"planName": "Enhanced Plan", "reason": "Document verified"}
+
+Upload correction file:
+  POST http://localhost:8082/api/v1/ingestion/upload
+  form-data: file=@correction.csv, insurerId=HDFC_LIFE, uploadedBy=admin, fileType=correction
+
+Trigger correction processing:
+  POST http://localhost:8084/api/v1/processing/trigger
+  Params: filePath=<absolute-path-to-file>, insurerId=HDFC_LIFE, policyType=TERM_LIFE, isCorrection=true
+
+================================================================================
+FILES MODIFIED/CREATED
+================================================================================
+
+Ingestion Service:
+  - IngestionJob.java (fileType)
+  - IngestionService.java (uploadFile with fileType, resolveFileType)
+  - IngestionController.java, PublicIngestionController.java (fileType param)
+  - JobStatusResponse.java (fileType)
+
+Customer Service:
+  - CustomerCorrectionRequest.java (new)
+  - CustomerController.java (PATCH, GET by-pan)
+  - CustomerService.java (correctCustomer, getCustomerByPanNumber)
+  - CustomerServiceImpl.java (implementation)
+
+Policy Service:
+  - PolicyCorrectionRequest.java (new)
+  - PolicyController.java (PATCH, GET search)
+  - PolicyService.java (correctPolicy, getPolicyByNumberAndInsurerId)
+  - PolicyServiceImpl.java (implementation)
+  - pom.xml (validation dependency)
+
+Processing Service:
+  - CustomerClient.java (new Feign client)
+  - PolicyClient.java (new Feign client)
+  - ExcelProcessingService.java (processCorrectionFile)
+  - ProcessingController.java (isCorrection param)
+  - application.properties (customer.service.url, policy.service.url)
+
+================================================================================
+NOTE: Customer and Policy services may have pre-existing Lombok compilation
+issues (like BFF). Add Lombok annotation processor to pom.xml if needed.
+See BFF fix: maven-compiler-plugin with annotationProcessorPaths for Lombok 1.18.40.
+================================================================================

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insurer CSV Upload Schema - MyPolicy</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; color: #333; }
+    h1 { color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
+    h2 { color: #333; margin-top: 28px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden; }
+    th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+    th { background: #0066cc; color: white; font-weight: 600; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    tr:hover { background: #f0f7ff; }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; font-family: Consolas, monospace; }
+    .required { color: #c00; font-weight: 600; }
+    ul { margin: 8px 0; padding-left: 24px; }
+    @media print { body { margin: 20px; } }
+  </style>
+</head>
+<body>
+  <h1>Insurer CSV Upload Schema – MyPolicy</h1>
+  <p>Mandatory schema that all insurers must follow when uploading policy data via the MyPolicy ingestion API.</p>
+
+  <h2>1. File Format</h2>
+  <ul>
+    <li><strong>Format:</strong> CSV (comma-separated) or Excel (.xls, .xlsx)</li>
+    <li><strong>Encoding:</strong> UTF-8</li>
+    <li><strong>Max size:</strong> 50 MB</li>
+    <li><strong>First row:</strong> Must be a header row with column names</li>
+  </ul>
+
+  <h2>2. Required Columns (All Policy Types)</h2>
+  <p>These columns <strong>must</strong> be present in every upload:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Column Name</th>
+        <th>Type</th>
+        <th>Required</th>
+        <th>Description</th>
+        <th>Example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>policyNumber</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>Unique policy identifier</td>
+        <td>AUPOL100000, LIPOL1000</td>
+      </tr>
+      <tr>
+        <td><code>customerName</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>Full name of policyholder</td>
+        <td>Rahul Sharma</td>
+      </tr>
+      <tr>
+        <td><code>insurerId</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>Insurer code (uppercase, underscore)</td>
+        <td>HDFC_LIFE, ICICI_LOMBARD</td>
+      </tr>
+      <tr>
+        <td><code>policyType</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>One of: TERM_LIFE, HEALTH, MOTOR, HOME, TRAVEL</td>
+        <td>TERM_LIFE</td>
+      </tr>
+      <tr>
+        <td><code>sumAssured</code></td>
+        <td>Number</td>
+        <td>Yes</td>
+        <td>Coverage amount (₹)</td>
+        <td>500000</td>
+      </tr>
+      <tr>
+        <td><code>premiumAmount</code></td>
+        <td>Number</td>
+        <td>Yes</td>
+        <td>Annual premium (₹)</td>
+        <td>25000</td>
+      </tr>
+      <tr>
+        <td><code>startDate</code></td>
+        <td>Date</td>
+        <td>Yes</td>
+        <td>Policy start date (YYYY-MM-DD or YYYYMMDD)</td>
+        <td>2024-01-15</td>
+      </tr>
+      <tr>
+        <td><code>endDate</code></td>
+        <td>Date</td>
+        <td>Yes</td>
+        <td>Policy end date (YYYY-MM-DD or YYYYMMDD)</td>
+        <td>2034-01-14</td>
+      </tr>
+      <tr>
+        <td><code>email</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>Customer email</td>
+        <td>customer@example.com</td>
+      </tr>
+      <tr>
+        <td><code>mobileNumber</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>Customer mobile (10+ digits)</td>
+        <td>9876543210</td>
+      </tr>
+      <tr>
+        <td><code>panNumber</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>PAN (10 chars) – for deduplication</td>
+        <td>ABCDE1234F</td>
+      </tr>
+      <tr>
+        <td><code>dateOfBirth</code></td>
+        <td>Date</td>
+        <td>Yes</td>
+        <td>Customer DOB (YYYY-MM-DD or YYYYMMDD)</td>
+        <td>1990-05-15</td>
+      </tr>
+      <tr>
+        <td><code>planName</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>Plan/product name</td>
+        <td>Standard Plan</td>
+      </tr>
+      <tr>
+        <td><code>city</code></td>
+        <td>String</td>
+        <td>Yes</td>
+        <td>City/location</td>
+        <td>MUMBAI</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Policy-Type-Specific Columns</h2>
+  <h3>3.1 TERM_LIFE / Life Insurance</h3>
+  <table>
+    <thead><tr><th>Column Name</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>policyTerm</code></td><td>Number</td><td>No</td><td>Term in years</td></tr>
+      <tr><td><code>nomineeName</code></td><td>String</td><td>No</td><td>Nominee full name</td></tr>
+      <tr><td><code>nomineeRelation</code></td><td>String</td><td>No</td><td>e.g. Spouse, Parent</td></tr>
+      <tr><td><code>gender</code></td><td>String</td><td>No</td><td>M / F / O</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 MOTOR / Auto Insurance</h3>
+  <table>
+    <thead><tr><th>Column Name</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>vehicleType</code></td><td>String</td><td>No</td><td>Car, Bike, etc.</td></tr>
+      <tr><td><code>vehicleRegNo</code></td><td>String</td><td>No</td><td>Registration number</td></tr>
+      <tr><td><code>idv</code></td><td>Number</td><td>No</td><td>Insured declared value</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 HEALTH</h3>
+  <table>
+    <thead><tr><th>Column Name</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>coverageType</code></td><td>String</td><td>No</td><td>Individual, Family Floater</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Column Name Aliases</h2>
+  <table>
+    <thead><tr><th>Standard Name</th><th>Acceptable Aliases</th></tr></thead>
+    <tbody>
+      <tr><td>policyNumber</td><td>PolicyNumber, Policy Num, PolicyNum</td></tr>
+      <tr><td>customerName</td><td>CustomerName, Customer Name</td></tr>
+      <tr><td>sumAssured</td><td>SumAssured, Coverage Amount, IDV (for Motor)</td></tr>
+      <tr><td>premiumAmount</td><td>AnnualPremium, AnnualPrem</td></tr>
+      <tr><td>startDate</td><td>PolicyStart, PolicyStartDate</td></tr>
+      <tr><td>endDate</td><td>PolicyEnd, PolicyEndDate</td></tr>
+      <tr><td>dateOfBirth</td><td>DOB, dateOfBirth</td></tr>
+      <tr><td>panNumber</td><td>PAN, panNumber</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Data Format Rules</h2>
+  <table>
+    <thead><tr><th>Field</th><th>Format</th><th>Rules</th></tr></thead>
+    <tbody>
+      <tr><td>Dates</td><td>YYYY-MM-DD or YYYYMMDD</td><td>Valid calendar date</td></tr>
+      <tr><td>Numbers</td><td>Decimal, no currency symbol</td><td>sumAssured &gt; 0, premiumAmount &gt;= 0</td></tr>
+      <tr><td>policyType</td><td>Enum</td><td>TERM_LIFE, HEALTH, MOTOR, HOME, TRAVEL</td></tr>
+      <tr><td>insurerId</td><td>Uppercase, underscore</td><td>e.g. HDFC_LIFE, ICICI_LOMBARD</td></tr>
+      <tr><td>mobileNumber</td><td>Digits only</td><td>Min 10 digits</td></tr>
+      <tr><td>email</td><td>Valid email format</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Example Valid CSV</h2>
+  <pre><code>policyNumber,customerName,insurerId,policyType,sumAssured,premiumAmount,startDate,endDate,email,mobileNumber,panNumber,dateOfBirth,planName,city
+POL001,Rahul Sharma,HDFC_LIFE,TERM_LIFE,5000000,25000,2024-01-01,2034-01-01,rahul@example.com,9876543210,ABCDE1234F,1990-05-15,Standard Plan,MUMBAI
+POL002,Priya Patel,ICICI_LOMBARD,HEALTH,1000000,15000,2024-02-01,2025-02-01,priya@example.com,9876543211,FGHIJ5678K,1985-08-20,Family Floater,PUNE</code></pre>
+
+  <p><em>Document version: 1.0 | MyPolicy Ingestion API</em></p>
+</body>
+</html>

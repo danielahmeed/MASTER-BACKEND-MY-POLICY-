@@ -1,4 +1,5 @@
 com\mypolicy\customer\dto\AuthResponse$AuthResponseBuilder.class
+com\mypolicy\customer\dto\CustomerCorrectionRequest.class
 com\mypolicy\customer\dto\CustomerResponse$CustomerResponseBuilder.class
 com\mypolicy\customer\service\CustomerService.class
 com\mypolicy\customer\repository\CustomerRepository.class
