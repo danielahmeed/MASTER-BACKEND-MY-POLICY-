@@ -1,0 +1,88 @@
+# Test Profile - Uses in-memory H2 database instead of PostgreSQL/MongoDB
+server:
+  port: 8082
+
+spring:
+  application:
+    name: data-pipeline-service
+
+  # H2 In-Memory Database (for testing)
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # MongoDB - Using embedded or skip for now
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test_db
+      database: test_db
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# File storage
+file:
+  upload-dir: ./uploads
+
+# External services (will fail gracefully if not available)
+customer:
+  service:
+    url: http://localhost:8081
+
+policy:
+  service:
+    url: http://localhost:8085
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+
+# Module Configuration
+pipeline:
+  ingestion:
+    enabled: true
+    max-batch-size: 1000
+  metadata:
+    enabled: true
+    cache-ttl: 3600
+  processing:
+    enabled: true
+    thread-pool-size: 10
+    chunk-size: 100
+  matching:
+    enabled: true
+    fuzzy-threshold: 3
+    strong-match-threshold: 2
+    weak-match-threshold: 3
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.mypolicy.pipeline: DEBUG
