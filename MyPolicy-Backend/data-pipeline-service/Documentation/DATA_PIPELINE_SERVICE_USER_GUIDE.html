@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Data Pipeline Service - User Guide</title>
+
+<style>
+body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.5; color: #333; margin: 2em; }
+h1 { color: #1a365d; font-size: 22pt; border-bottom: 2px solid #3182ce; padding-bottom: 0.3em; margin-top: 1.5em; }
+h2 { color: #2c5282; font-size: 16pt; margin-top: 1.2em; }
+h3 { color: #2d3748; font-size: 13pt; margin-top: 1em; }
+p { margin: 0.6em 0; text-align: justify; }
+pre, code { background: #f7fafc; border: 1px solid #e2e8f0; padding: 0.2em 0.4em; font-family: Consolas, monospace; font-size: 9pt; }
+pre { padding: 0.8em; overflow-x: auto; white-space: pre-wrap; }
+code { display: inline; }
+ul, ol { margin: 0.5em 0; padding-left: 1.5em; }
+li { margin: 0.3em 0; }
+hr { border: none; border-top: 1px solid #cbd5e0; margin: 1.5em 0; }
+strong { color: #1a365d; }
+blockquote { border-left: 4px solid #3182ce; margin: 1em 0; padding-left: 1em; color: #4a5568; }
+a { color: #3182ce; text-decoration: none; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 10pt; }
+th, td { border: 1px solid #e2e8f0; padding: 0.5em; text-align: left; }
+th { background: #edf2f7; font-weight: bold; }
+@page { size: A4; margin: 2cm; }
+</style>
+
+</head>
+<body>
+<h1 id="data-pipeline-service-detailed-user-guide">Data Pipeline Service – Detailed User Guide</h1>
+<p><strong>Document Version:</strong> 1.0<br />
+<strong>Last Updated:</strong> February 2026<br />
+<strong>Service:</strong> MyPolicy Data Pipeline (Port 8082)</p>
+<hr />
+<h2 id="1-overview">1. Overview</h2>
+<p>The <strong>Data Pipeline Service</strong> is a consolidated backend service that handles the ingestion, validation, transformation, and processing of insurer policy files. It bridges insurer-provided data (CSV/Excel) with the MyPolicy system by matching policies to existing customers and creating policy records.</p>
+<h3 id="11-purpose">1.1 Purpose</h3>
+<ul>
+<li>Accept policy file uploads from insurers (Health, Auto, Life)</li>
+<li>Validate file structure against metadata-driven schemas</li>
+<li>Map insurer-specific columns to a canonical schema</li>
+<li>Match each policy row to an existing customer via mobile, email, or PAN</li>
+<li>Create policies in the policy-service and update customer portfolios</li>
+</ul>
+<h3 id="12-key-capabilities">1.2 Key Capabilities</h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>File Upload</strong></td>
+<td>CSV and Excel (.xls, .xlsx) up to 50MB</td>
+</tr>
+<tr>
+<td><strong>Schema Validation</strong></td>
+<td>Metadata-driven validation per insurer type</td>
+</tr>
+<tr>
+<td><strong>Field Mapping</strong></td>
+<td>Configurable YAML mappings for each insurer</td>
+</tr>
+<tr>
+<td><strong>Customer Matching</strong></td>
+<td>Mobile → PAN → Email with name/DOB verification</td>
+</tr>
+<tr>
+<td><strong>Policy Creation</strong></td>
+<td>Creates policies via policy-service API</td>
+</tr>
+<tr>
+<td><strong>Verification Failures</strong></td>
+<td>Tracks and displays unmatched/failed rows in UI</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-architecture">2. Architecture</h2>
+<h3 id="21-internal-modules">2.1 Internal Modules</h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ingestion</strong></td>
+<td>File upload, storage, job creation, status tracking</td>
+</tr>
+<tr>
+<td><strong>Metadata</strong></td>
+<td>Schema definitions, field mappings (YAML/DB)</td>
+</tr>
+<tr>
+<td><strong>Processing</strong></td>
+<td>CSV/Excel parsing, field mapping, data massaging</td>
+</tr>
+<tr>
+<td><strong>Matching</strong></td>
+<td>Customer resolution, policy creation, verification</td>
+</tr>
+<tr>
+<td><strong>Portfolio</strong></td>
+<td>Consolidated customer+policy view in MongoDB</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-detailed-process-flow">3. Detailed Process Flow</h2>
+<h3 id="31-upload-phase">3.1 Upload Phase</h3>
+<ol>
+<li>User selects a policy file (CSV or Excel)</li>
+<li>User selects insurer type (HEALTH_INSURER, AUTO_INSURER, LIFE_INSURER)</li>
+<li>File is validated: size (≤50MB), extension (.csv, .xls, .xlsx)</li>
+<li>Schema validation runs against <code>insurer-field-mappings.yaml</code> required columns</li>
+<li>File is saved to <code>storage/ingestion/{jobId}.{ext}</code></li>
+<li>Ingestion job created in MongoDB with status <code>UPLOADED</code></li>
+</ol>
+<h3 id="32-processing-phase-triggered-by-user">3.2 Processing Phase (Triggered by User)</h3>
+<ol>
+<li>Job status transitions to <code>PROCESSING</code></li>
+<li>File is read and parsed (CSV or Excel)</li>
+<li>Each row is mapped to canonical schema using <code>fieldMappings</code></li>
+<li>Data massaging applied (e.g., <code>normalizeDate</code>, <code>normalizeMobile</code>, <code>normalizeCurrency</code>)</li>
+<li>For each record:</li>
+<li><strong>Matching:</strong> Resolve customer via CustomerMatchingRuleService</li>
+<li><strong>On success:</strong> Create policy via policy-service, update portfolio</li>
+<li><strong>On failure:</strong> Record verification failure (policy number + reason)</li>
+<li>Job status transitions to <code>COMPLETED</code> (or <code>FAILED</code> on critical error)</li>
+</ol>
+<h3 id="33-matching-logic">3.3 Matching Logic</h3>
+<p><strong>Priority order:</strong> Mobile → PAN → Email</p>
+<ol>
+<li>Search customer-service by mobile number</li>
+<li>If found and name/DOB verify (Levenshtein ≤3 for name): return customerId</li>
+<li>Else search by PAN</li>
+<li>Else search by email</li>
+<li>If multiple identifiers found but name/DOB mismatch: return failure "Verification failed: name or DOB mismatch"</li>
+<li>If no customer found: return failure "No customer found (mobile/email/PAN)"</li>
+</ol>
+<hr />
+<h2 id="4-metadata-configuration">4. Metadata Configuration</h2>
+<h3 id="41-insurer-field-mappingsyaml">4.1 insurer-field-mappings.yaml</h3>
+<p>Located at <code>src/main/resources/metadata/insurer-field-mappings.yaml</code></p>
+<p>Defines for each insurer:
+- <code>requiredSourceColumns</code> – Columns that must exist in the file
+- <code>fieldMappings</code> – Source column → target field with transforms</p>
+<p><strong>Example mapping:</strong></p>
+<pre><code class="language-yaml">HEALTH_INSURER:
+  policyTypes:
+    HEALTH:
+      fieldMappings:
+        - sourceField: &quot;Policy Number&quot;
+          targetField: &quot;policyNumber&quot;
+          dataType: &quot;STRING&quot;
+        - sourceField: &quot;Mobile&quot;
+          targetField: &quot;mobileNumber&quot;
+          transformFunction: &quot;normalizeMobile&quot;
+</code></pre>
+<h3 id="42-supported-insurers">4.2 Supported Insurers</h3>
+<table>
+<thead>
+<tr>
+<th>Insurer ID</th>
+<th>Policy Type</th>
+<th>Example File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HEALTH_INSURER</td>
+<td>HEALTH</td>
+<td>Health_Insurance.csv</td>
+</tr>
+<tr>
+<td>AUTO_INSURER</td>
+<td>MOTOR</td>
+<td>Auto_Insurance.csv</td>
+</tr>
+<tr>
+<td>LIFE_INSURER</td>
+<td>TERM_LIFE</td>
+<td>Life_Insurance.csv</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-apis-and-endpoints">5. APIs and Endpoints</h2>
+<h3 id="51-public-api-no-auth">5.1 Public API (No Auth)</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/public/v1/ingestion/upload</code></td>
+<td>Upload policy file</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/public/v1/ingestion/status/{jobId}</code></td>
+<td>Get job status</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/public/v1/ingestion/jobs</code></td>
+<td>List all ingestion jobs</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/public/v1/ingestion/process/{jobId}</code></td>
+<td>Trigger processing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-insurer-portal">5.2 Insurer Portal</h3>
+<ul>
+<li><strong>URL:</strong> <code>http://localhost:8082/insurer-portal/</code> or <code>/</code></li>
+<li><strong>Features:</strong> Upload, process, view status, verification failures</li>
+</ul>
+<hr />
+<h2 id="6-data-stores">6. Data Stores</h2>
+<h3 id="61-mongodb-ingestion_db">6.1 MongoDB (ingestion_db)</h3>
+<table>
+<thead>
+<tr>
+<th>Collection</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ingestion_jobs</code></td>
+<td>Job metadata, status, total/processed counts, verification failures</td>
+</tr>
+<tr>
+<td><code>customer_portfolios</code></td>
+<td>Consolidated customer + policies view</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-file-storage">6.2 File Storage</h3>
+<ul>
+<li><strong>Path:</strong> <code>storage/ingestion/{jobId}.csv</code> (or .xlsx)</li>
+<li><strong>Purpose:</strong> Original uploaded file for processing and audit</li>
+</ul>
+<h3 id="63-postgresql-optional">6.3 PostgreSQL (Optional)</h3>
+<ul>
+<li><strong>Database:</strong> <code>mypolicy_db</code></li>
+<li><strong>Purpose:</strong> Metadata module (insurer configs, field mappings from DB)</li>
+<li><strong>Note:</strong> YAML config is primary; DB is optional override</li>
+</ul>
+<hr />
+<h2 id="7-prerequisites">7. Prerequisites</h2>
+<h3 id="71-services-required">7.1 Services Required</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Customer-service</strong></td>
+<td>8081</td>
+<td>Customer lookup (mobile, email, PAN)</td>
+</tr>
+<tr>
+<td><strong>Policy-service</strong></td>
+<td>8085</td>
+<td>Policy creation</td>
+</tr>
+<tr>
+<td><strong>MongoDB</strong></td>
+<td>27017</td>
+<td>Ingestion jobs, portfolios</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-customer-data">7.2 Customer Data</h3>
+<ul>
+<li>Customers must exist in customer-service <strong>before</strong> processing</li>
+<li>Required fields for matching: <code>mobileNumber</code> and/or <code>email</code> and/or <code>panNumber</code></li>
+<li>Verification fields: <code>firstName</code>, <code>lastName</code>, <code>dateOfBirth</code> (for name/DOB checks)</li>
+</ul>
+<h3 id="73-policy-file-format">7.3 Policy File Format</h3>
+<ul>
+<li>Must match required columns in <code>insurer-field-mappings.yaml</code></li>
+<li>Values for mobile/email/PAN must match customers in customer-service</li>
+</ul>
+<hr />
+<h2 id="8-verification-failures">8. Verification Failures</h2>
+<p>When matching fails, the pipeline:
+1. Records the policy number and failure reason
+2. Stores in <code>IngestionJob.verificationFailures</code>
+3. Displays in the Insurer Portal under "Verification Failures"</p>
+<p><strong>Failure reasons:</strong>
+- "No customer found (mobile/email/PAN)" – No customer with matching identifiers
+- "Verification failed: name or DOB mismatch" – Customer found but name or DOB doesn’t match
+- "Policy creation failed: ..." – Error from policy-service</p>
+<hr />
+<h2 id="9-downstream-services-what-comes-next">9. Downstream Services (What Comes Next)</h2>
+<h3 id="91-customer-service-upstream-dependency">9.1 Customer-Service (Upstream Dependency)</h3>
+<p><strong>Port:</strong> 8081<br />
+<strong>Role:</strong> Master data for customers. Data-pipeline calls it to resolve customerId before creating policies.</p>
+<p><strong>APIs used:</strong>
+- <code>GET /api/v1/customers/search/mobile/{mobile}</code>
+- <code>GET /api/v1/customers/search/email/{email}</code>
+- <code>GET /api/v1/customers/search/pan/{pan}</code></p>
+<p><strong>Database:</strong> PostgreSQL <code>mypolicy_db</code>, table <code>customers</code></p>
+<hr />
+<h3 id="92-policy-service-downstream-consumer">9.2 Policy-Service (Downstream Consumer)</h3>
+<p><strong>Port:</strong> 8085<br />
+<strong>Role:</strong> Stores policies. Data-pipeline creates policies here after successful matching.</p>
+<p><strong>APIs used:</strong>
+- <code>POST /api/v1/policies</code> – Create policy (customerId, policyNumber, insurerId, policyType, premiumAmount, sumAssured, etc.)</p>
+<p><strong>Database:</strong> PostgreSQL <code>mypolicy_db</code>, table <code>policies</code></p>
+<hr />
+<h3 id="93-bff-frontend-optional-consumers">9.3 BFF / Frontend (Optional Consumers)</h3>
+<ul>
+<li><strong>Portfolio API:</strong> <code>GET /api/public/v1/portfolio</code> – Returns customer+policy aggregates from MongoDB</li>
+<li><strong>List Jobs:</strong> <code>GET /api/public/v1/ingestion/jobs</code> – For admin/dashboard views</li>
+</ul>
+<hr />
+<h3 id="94-service-dependency-diagram">9.4 Service Dependency Diagram</h3>
+<pre><code>                    ┌─────────────────────┐
+                    │   Insurer Portal    │
+                    │   (Web UI)          │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+┌──────────────┐      ┌───────────────────────┐      ┌─────────────────┐
+│  Customer-   │◀─────│   Data Pipeline       │─────▶│  Policy-        │
+│  Service     │      │   Service (8082)      │      │  Service        │
+│  (8081)      │      └───────────────────────┘      │  (8085)         │
+└──────────────┘                 │                   └─────────────────┘
+      ▲                           │
+      │                           ▼
+      │                  ┌─────────────────┐
+      │                  │  MongoDB        │
+      │                  │  (ingestion_db) │
+      │                  └─────────────────┘
+      │
+      └──────────────┐
+                     │
+              ┌──────┴──────┐
+              │ PostgreSQL  │
+              │ mypolicy_db │
+              └─────────────┘
+                     ▲
+                     │
+              ┌──────┴──────┐
+              │  Policy-    │
+              │  Service    │
+              └─────────────┘
+</code></pre>
+<hr />
+<h2 id="10-startup-order">10. Startup Order</h2>
+<ol>
+<li><strong>PostgreSQL</strong> – Create <code>mypolicy_db</code> (if using metadata DB)</li>
+<li><strong>MongoDB</strong> – Start on localhost:27017</li>
+<li><strong>Customer-service</strong> – Port 8081 (add customers first)</li>
+<li><strong>Policy-service</strong> – Port 8085</li>
+<li><strong>Data Pipeline Service</strong> – Port 8082</li>
+</ol>
+<p><strong>With local profile:</strong></p>
+<pre><code class="language-bash">mvn spring-boot:run &quot;-Dspring-boot.run.profiles=local&quot;
+</code></pre>
+<ul>
+<li>Uses H2 instead of PostgreSQL for metadata</li>
+<li>Still requires MongoDB on localhost:27017</li>
+</ul>
+<hr />
+<h2 id="11-key-files-reference">11. Key Files Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>metadata/insurer-field-mappings.yaml</code></td>
+<td>Insurer schemas and field mappings</td>
+</tr>
+<tr>
+<td><code>matching/CustomerMatchingRuleService.java</code></td>
+<td>Matching logic</td>
+</tr>
+<tr>
+<td><code>matching/MatchingService.java</code></td>
+<td>Policy creation orchestration</td>
+</tr>
+<tr>
+<td><code>ingestion/IngestionService.java</code></td>
+<td>File upload, job lifecycle</td>
+</tr>
+<tr>
+<td><code>processing/ProcessingService.java</code></td>
+<td>Parse, map, orchestrate matching</td>
+</tr>
+<tr>
+<td><code>static/insurer-portal/</code></td>
+<td>Web UI (index.html, app.js, styles.css)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-summary">12. Summary</h2>
+<p>The <strong>Data Pipeline Service</strong> ingests insurer policy files, validates and maps them to a canonical schema, matches each row to a customer via mobile/email/PAN, and creates policies in the policy-service. It depends on <strong>customer-service</strong> for customer data and feeds <strong>policy-service</strong> with newly created policies. Verification failures are tracked and displayed in the Insurer Portal for manual review.</p>
+<hr />
+<p><em>End of Document</em></p>
+</body>
+</html>

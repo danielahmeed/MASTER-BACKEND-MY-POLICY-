@@ -34,6 +34,11 @@ public class IngestionController {
   private final IngestionService ingestionService;
   private final JwtUtil jwtUtil;
 
+  public IngestionController(IngestionService ingestionService, JwtUtil jwtUtil) {
+    this.ingestionService = ingestionService;
+    this.jwtUtil = jwtUtil;
+  }
+
   /**
    * POST /api/v1/ingestion/upload
    * Accepts Excel (.xls, .xlsx) or CSV (.csv) files, validates, stores, creates

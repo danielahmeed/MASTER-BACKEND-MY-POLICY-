@@ -17,6 +17,15 @@ MyPolicy-Backend/ingestion-service/storage/ingestion/*.csv
 MyPolicy-Backend/ingestion-service/storage/ingestion/*.xlsx
 MyPolicy-Backend/ingestion-service/storage/ingestion/*.xls
 
+# H2/DB data files (can be locked)
+MyPolicy-Backend/policy-service/data/
+*.mv.db
+*.trace.db
+
+# Secrets
+**/password.txt
+**/Documentation/password.txt
+
 # OS
 .DS_Store
 Thumbs.db

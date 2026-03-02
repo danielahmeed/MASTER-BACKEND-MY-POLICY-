@@ -1,6 +1,6 @@
 package com.mypolicy.pipeline.metadata.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import org.hibernate.annotations.Type;
 
 import jakarta.persistence.Column;
@@ -12,7 +12,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Builder;
-import lombok.Data;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
@@ -28,7 +27,6 @@ import java.util.Map;
  * 
  * Stored in PostgreSQL (mypolicy_db) - insurer_configurations table
  */
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -46,12 +44,11 @@ public class InsurerConfiguration implements Serializable {
   @Column(nullable = false, name = "insurer_name")
   private String insurerName;
 
-  @Type(JsonBinaryType.class)
-  @Column(columnDefinition = "jsonb", name = "field_mappings")
+  @Type(JsonType.class)
+  @Column(columnDefinition = "varchar(65535)", name = "field_mappings")
   private Map<String, List<FieldMapping>> fieldMappings;
 
   @Column(name = "active", nullable = false)
-  @Builder.Default
   private boolean active = true;
 
   @Column(name = "updated_at")
@@ -62,4 +59,17 @@ public class InsurerConfiguration implements Serializable {
   protected void onUpdate() {
     updatedAt = LocalDateTime.now();
   }
+
+  public String getConfigId() { return configId; }
+  public void setConfigId(String configId) { this.configId = configId; }
+  public String getInsurerId() { return insurerId; }
+  public void setInsurerId(String insurerId) { this.insurerId = insurerId; }
+  public String getInsurerName() { return insurerName; }
+  public void setInsurerName(String insurerName) { this.insurerName = insurerName; }
+  public Map<String, List<FieldMapping>> getFieldMappings() { return fieldMappings; }
+  public void setFieldMappings(Map<String, List<FieldMapping>> fieldMappings) { this.fieldMappings = fieldMappings; }
+  public boolean isActive() { return active; }
+  public void setActive(boolean active) { this.active = active; }
+  public LocalDateTime getUpdatedAt() { return updatedAt; }
+  public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

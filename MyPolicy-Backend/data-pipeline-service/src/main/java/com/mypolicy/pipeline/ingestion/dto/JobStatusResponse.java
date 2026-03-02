@@ -3,6 +3,8 @@ package com.mypolicy.pipeline.ingestion.dto;
 import com.mypolicy.pipeline.ingestion.model.IngestionStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Job status response for BFF/Processing Service.
@@ -17,13 +19,16 @@ public class JobStatusResponse {
   private String fileType;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
+  private String failureReason;
+  private List<Map<String, String>> verificationFailures;
 
   public JobStatusResponse() {
   }
 
   public JobStatusResponse(String jobId, IngestionStatus status, int processedRecords,
       int totalRecords, String filePath, String insurerId, String fileType,
-      LocalDateTime createdAt, LocalDateTime updatedAt) {
+      LocalDateTime createdAt, LocalDateTime updatedAt, String failureReason,
+      List<Map<String, String>> verificationFailures) {
     this.jobId = jobId;
     this.status = status;
     this.processedRecords = processedRecords;
@@ -33,6 +38,8 @@ public class JobStatusResponse {
     this.fileType = fileType;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.failureReason = failureReason;
+    this.verificationFailures = verificationFailures;
   }
 
   public String getJobId() { return jobId; }
@@ -53,4 +60,8 @@ public class JobStatusResponse {
   public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
   public LocalDateTime getUpdatedAt() { return updatedAt; }
   public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+  public String getFailureReason() { return failureReason; }
+  public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+  public List<Map<String, String>> getVerificationFailures() { return verificationFailures; }
+  public void setVerificationFailures(List<Map<String, String>> verificationFailures) { this.verificationFailures = verificationFailures; }
 }

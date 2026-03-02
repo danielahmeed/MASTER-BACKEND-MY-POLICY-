@@ -1,0 +1,532 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>API Contracts</title>
+<style>
+body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.45; color: #333; margin: 2em; }
+h1 { color: #1a365d; font-size: 20pt; border-bottom: 2px solid #3182ce; padding-bottom: 0.3em; }
+h2 { color: #2c5282; font-size: 14pt; margin-top: 1.2em; }
+h3 { color: #2d3748; font-size: 12pt; margin-top: 1em; }
+table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 9pt; }
+th, td { border: 1px solid #e2e8f0; padding: 0.4em; text-align: left; }
+th { background: #edf2f7; }
+pre, code { background: #f7fafc; border: 1px solid #e2e8f0; padding: 0.2em; font-size: 9pt; }
+pre { padding: 0.6em; white-space: pre-wrap; }
+@page { size: A4; margin: 2cm; }
+</style>
+</head><body><h1>Data Pipeline Service – API Contracts</h1>
+<p><strong>Document Version:</strong> 1.0<br />
+<strong>Last Updated:</strong> February 2026<br />
+<strong>Base URL:</strong> <code>http://localhost:8082</code></p>
+<p>This document details all API contracts: endpoints exposed by the data-pipeline-service and those it consumes from external services.</p>
+<hr />
+<h2>1. APIs Exposed by Data Pipeline Service</h2>
+<h3>1.1 Public Ingestion API (<code>/api/public/v1/ingestion</code>)</h3>
+<p>No authentication required. Used by Insurer Portal and external integrators.</p>
+<hr />
+<h4>POST <code>/api/public/v1/ingestion/upload</code></h4>
+<p>Upload a policy file (CSV or Excel) for ingestion.</p>
+<p><strong>Request:</strong>
+- <strong>Content-Type:</strong> <code>multipart/form-data</code>
+- <strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>file</td>
+<td>File</td>
+<td>Yes</td>
+<td>CSV or Excel (.csv, .xls, .xlsx), max 50MB</td>
+</tr>
+<tr>
+<td>insurerId</td>
+<td>String</td>
+<td>Yes</td>
+<td>One of: <code>HEALTH_INSURER</code>, <code>AUTO_INSURER</code>, <code>LIFE_INSURER</code></td>
+</tr>
+<tr>
+<td>uploadedBy</td>
+<td>String</td>
+<td>Yes</td>
+<td>Identifier of the uploader (e.g., email)</td>
+</tr>
+<tr>
+<td>fileType</td>
+<td>String</td>
+<td>No</td>
+<td><code>normal</code> (default) or <code>correction</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> <code>201 Created</code></p>
+<pre><code class="language-json">{
+  &quot;jobId&quot;: &quot;uuid-string&quot;,
+  &quot;status&quot;: &quot;UPLOADED&quot;
+}
+</code></pre>
+<p><strong>Error responses:</strong>
+- <code>400</code> – Validation failed (invalid file, missing columns, schema mismatch)
+- <code>500</code> – Storage or unexpected error</p>
+<hr />
+<h4>GET <code>/api/public/v1/ingestion/status/{jobId}</code></h4>
+<p>Get the status and details of an ingestion job.</p>
+<p><strong>Path Parameters:</strong>
+| Parameter | Type   | Description    |
+|-----------|--------|----------------|
+| jobId     | String | Ingestion job ID |</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;jobId&quot;: &quot;uuid-string&quot;,
+  &quot;status&quot;: &quot;COMPLETED&quot;,
+  &quot;processedRecords&quot;: 95,
+  &quot;totalRecords&quot;: 100,
+  &quot;filePath&quot;: &quot;/abs/path/storage/ingestion/{jobId}.csv&quot;,
+  &quot;insurerId&quot;: &quot;HEALTH_INSURER&quot;,
+  &quot;fileType&quot;: &quot;normal&quot;,
+  &quot;createdAt&quot;: &quot;2026-02-26T10:00:00&quot;,
+  &quot;updatedAt&quot;: &quot;2026-02-26T10:05:00&quot;,
+  &quot;failureReason&quot;: null,
+  &quot;verificationFailures&quot;: [
+    {
+      &quot;policyNumber&quot;: &quot;HEPOL100001&quot;,
+      &quot;reason&quot;: &quot;No customer found (mobile/email/PAN)&quot;
+    }
+  ]
+}
+</code></pre>
+<p><strong>Status values:</strong> <code>UPLOADED</code>, <code>PROCESSING</code>, <code>COMPLETED</code>, <code>FAILED</code></p>
+<p><strong>Error responses:</strong>
+- <code>400</code> – Job not found</p>
+<hr />
+<h4>GET <code>/api/public/v1/ingestion/jobs</code></h4>
+<p>List all ingestion jobs from MongoDB.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">[
+  {
+    &quot;jobId&quot;: &quot;uuid-1&quot;,
+    &quot;insurerId&quot;: &quot;HEALTH_INSURER&quot;,
+    &quot;status&quot;: &quot;COMPLETED&quot;,
+    &quot;totalRecords&quot;: 100,
+    &quot;processedRecords&quot;: 95,
+    &quot;createdAt&quot;: &quot;2026-02-26T10:00:00&quot;
+  }
+]
+</code></pre>
+<hr />
+<h4>POST <code>/api/public/v1/ingestion/process/{jobId}</code></h4>
+<p>Trigger processing of an uploaded file.</p>
+<p><strong>Path Parameters:</strong>
+| Parameter | Type   | Description |
+|-----------|--------|-------------|
+| jobId     | String | Ingestion job ID |</p>
+<p><strong>Query Parameters:</strong>
+| Parameter   | Type   | Required | Description                                 |
+|-------------|--------|----------|---------------------------------------------|
+| policyType  | String | No       | e.g. <code>HEALTH</code>, <code>MOTOR</code>, <code>TERM_LIFE</code>. Resolved from config if omitted |</p>
+<p><strong>Response:</strong> <code>202 Accepted</code></p>
+<pre><code class="language-json">{
+  &quot;jobId&quot;: &quot;uuid-string&quot;,
+  &quot;message&quot;: &quot;Processing started&quot;,
+  &quot;status&quot;: &quot;PROCESSING&quot;
+}
+</code></pre>
+<p><strong>Error responses:</strong>
+- <code>400</code> – Job not in UPLOADED state
+- <code>500</code> – Processing failed</p>
+<hr />
+<h3>1.2 Authenticated Ingestion API (<code>/api/v1/ingestion</code>)</h3>
+<p>JWT required in <code>Authorization</code> header. Uses <code>ApiResponse&lt;T&gt;</code> wrapper.</p>
+<hr />
+<h4>POST <code>/api/v1/ingestion/upload</code></h4>
+<p>Upload file (JWT-based; <code>uploadedBy</code> extracted from token).</p>
+<p><strong>Request:</strong>
+- <strong>Headers:</strong> <code>Authorization: Bearer &lt;jwt&gt;</code>
+- <strong>Content-Type:</strong> <code>multipart/form-data</code>
+- <strong>Parameters:</strong> Same as public upload (<code>file</code>, <code>insurerId</code>, <code>fileType</code>)</p>
+<p><strong>Response:</strong> <code>201 Created</code></p>
+<pre><code class="language-json">{
+  &quot;success&quot;: true,
+  &quot;message&quot;: &quot;File uploaded successfully&quot;,
+  &quot;data&quot;: {
+    &quot;jobId&quot;: &quot;uuid-string&quot;,
+    &quot;status&quot;: &quot;UPLOADED&quot;
+  },
+  &quot;timestamp&quot;: &quot;2026-02-26T10:00:00&quot;
+}
+</code></pre>
+<hr />
+<h4>GET <code>/api/v1/ingestion/status/{jobId}</code></h4>
+<p>Get job status (wrapped in ApiResponse).</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;success&quot;: true,
+  &quot;message&quot;: &quot;Job status retrieved successfully&quot;,
+  &quot;data&quot;: {
+    &quot;jobId&quot;: &quot;uuid-string&quot;,
+    &quot;status&quot;: &quot;COMPLETED&quot;,
+    &quot;processedRecords&quot;: 95,
+    &quot;totalRecords&quot;: 100,
+    &quot;verificationFailures&quot;: [...]
+  }
+}
+</code></pre>
+<hr />
+<h4>PATCH <code>/api/v1/ingestion/{jobId}/progress</code></h4>
+<p>Internal: increment processed records count.</p>
+<p><strong>Request body:</strong></p>
+<pre><code class="language-json">{
+  &quot;processedRecordsDelta&quot;: 5
+}
+</code></pre>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<hr />
+<h4>PATCH <code>/api/v1/ingestion/{jobId}/status</code></h4>
+<p>Internal: transition job state.</p>
+<p><strong>Request body:</strong></p>
+<pre><code class="language-json">{
+  &quot;status&quot;: &quot;COMPLETED&quot;,
+  &quot;failureReason&quot;: null
+}
+</code></pre>
+<p><strong>Allowed transitions:</strong> <code>UPLOADED</code> → <code>PROCESSING</code>; <code>PROCESSING</code> → <code>COMPLETED</code> | <code>FAILED</code></p>
+<hr />
+<h4>GET <code>/api/v1/ingestion/health</code></h4>
+<p>Health check.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;success&quot;: true,
+  &quot;data&quot;: &quot;healthy&quot;
+}
+</code></pre>
+<hr />
+<h3>1.3 Portfolio API (<code>/api/public/v1/portfolio</code>)</h3>
+<hr />
+<h4>GET <code>/api/public/v1/portfolio</code></h4>
+<p>List all customer portfolios (customer + policies).</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;mongo-id&quot;,
+    &quot;customerId&quot;: &quot;uuid-string&quot;,
+    &quot;firstName&quot;: &quot;John&quot;,
+    &quot;lastName&quot;: &quot;Doe&quot;,
+    &quot;email&quot;: &quot;john@example.com&quot;,
+    &quot;mobileNumber&quot;: &quot;9876543210&quot;,
+    &quot;panNumber&quot;: &quot;ABCDE1234F&quot;,
+    &quot;policies&quot;: [
+      {
+        &quot;policyId&quot;: &quot;uuid&quot;,
+        &quot;policyNumber&quot;: &quot;HEPOL100001&quot;,
+        &quot;insurerId&quot;: &quot;HEALTH_INSURER&quot;,
+        &quot;policyType&quot;: &quot;HEALTH&quot;,
+        &quot;planName&quot;: &quot;Family Health&quot;,
+        &quot;premiumAmount&quot;: 5000,
+        &quot;sumAssured&quot;: 500000,
+        &quot;startDate&quot;: &quot;2025-01-01&quot;,
+        &quot;endDate&quot;: &quot;2026-01-01&quot;,
+        &quot;status&quot;: &quot;ACTIVE&quot;
+      }
+    ]
+  }
+]
+</code></pre>
+<hr />
+<h4>GET <code>/api/public/v1/portfolio/{customerId}</code></h4>
+<p>Get portfolio for a specific customer.</p>
+<p><strong>Response:</strong> <code>200 OK</code> or <code>404 Not Found</code></p>
+<hr />
+<h3>1.4 Metadata API (<code>/api/public/v1/metadata</code>)</h3>
+<hr />
+<h4>GET <code>/api/public/v1/metadata/insurers</code></h4>
+<p>List configured insurer IDs.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">[&quot;HEALTH_INSURER&quot;, &quot;AUTO_INSURER&quot;, &quot;LIFE_INSURER&quot;]
+</code></pre>
+<hr />
+<h4>GET <code>/api/public/v1/metadata/mappings</code></h4>
+<p>Get field mappings for an insurer and policy type.</p>
+<p><strong>Query Parameters:</strong>
+| Parameter   | Type   | Required | Description                          |
+|-------------|--------|----------|--------------------------------------|
+| insurerId   | String | Yes      | e.g. <code>HEALTH_INSURER</code>                |
+| policyType  | String | No       | e.g. <code>HEALTH</code>. Resolved from config if omitted |</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;insurerId&quot;: &quot;HEALTH_INSURER&quot;,
+  &quot;policyType&quot;: &quot;HEALTH&quot;,
+  &quot;fieldMappings&quot;: [
+    {
+      &quot;sourceField&quot;: &quot;Policy Number&quot;,
+      &quot;targetField&quot;: &quot;policyNumber&quot;,
+      &quot;dataType&quot;: &quot;STRING&quot;,
+      &quot;transformFunction&quot;: null
+    },
+    {
+      &quot;sourceField&quot;: &quot;Mobile&quot;,
+      &quot;targetField&quot;: &quot;mobileNumber&quot;,
+      &quot;transformFunction&quot;: &quot;normalizeMobile&quot;
+    }
+  ],
+  &quot;description&quot;: &quot;Source CSV/Excel column names map to canonical fields...&quot;
+}
+</code></pre>
+<hr />
+<h2>2. APIs Consumed by Data Pipeline Service</h2>
+<h3>2.1 Customer Service (Port 8081)</h3>
+<p>Base URL: <code>http://localhost:8081</code> (configurable via <code>customer.service.url</code>)</p>
+<hr />
+<h4>GET <code>/api/v1/customers/{customerId}</code></h4>
+<p>Get customer by ID.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;customerId&quot;: &quot;uuid-string&quot;,
+  &quot;firstName&quot;: &quot;John&quot;,
+  &quot;lastName&quot;: &quot;Doe&quot;,
+  &quot;email&quot;: &quot;john@example.com&quot;,
+  &quot;mobileNumber&quot;: &quot;9876543210&quot;,
+  &quot;panNumber&quot;: &quot;ABCDE1234F&quot;,
+  &quot;dateOfBirth&quot;: &quot;1990-05-15&quot;
+}
+</code></pre>
+<hr />
+<h4>GET <code>/api/v1/customers/search/mobile/{mobile}</code></h4>
+<p>Search customer by mobile number.</p>
+<p><strong>Response:</strong> <code>200 OK</code> (customer) or <code>404 Not Found</code></p>
+<hr />
+<h4>GET <code>/api/v1/customers/search/email/{email}</code></h4>
+<p>Search customer by email.</p>
+<p><strong>Response:</strong> <code>200 OK</code> (customer) or <code>404 Not Found</code></p>
+<hr />
+<h4>GET <code>/api/v1/customers/search/pan/{pan}</code></h4>
+<p>Search customer by PAN number.</p>
+<p><strong>Response:</strong> <code>200 OK</code> (customer) or <code>404 Not Found</code></p>
+<hr />
+<h3>2.2 Policy Service (Port 8085)</h3>
+<p>Base URL: <code>http://localhost:8085</code> (configurable via <code>policy.service.url</code>)</p>
+<hr />
+<h4>POST <code>/api/v1/policies</code></h4>
+<p>Create a policy.</p>
+<p><strong>Request body:</strong></p>
+<pre><code class="language-json">{
+  &quot;customerId&quot;: &quot;uuid-string&quot;,
+  &quot;insurerId&quot;: &quot;HEALTH_INSURER&quot;,
+  &quot;policyNumber&quot;: &quot;HEPOL100001&quot;,
+  &quot;policyType&quot;: &quot;HEALTH&quot;,
+  &quot;planName&quot;: &quot;Family Health&quot;,
+  &quot;premiumAmount&quot;: 5000.00,
+  &quot;sumAssured&quot;: 500000.00,
+  &quot;startDate&quot;: &quot;2025-01-01&quot;,
+  &quot;endDate&quot;: &quot;2026-01-01&quot;,
+  &quot;status&quot;: &quot;ACTIVE&quot;
+}
+</code></pre>
+<p><strong>Required fields:</strong> <code>customerId</code>, <code>insurerId</code>, <code>policyNumber</code>, <code>policyType</code>, <code>premiumAmount</code>, <code>sumAssured</code>, <code>status</code></p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;uuid-string&quot;,
+  &quot;customerId&quot;: &quot;uuid-string&quot;,
+  &quot;insurerId&quot;: &quot;HEALTH_INSURER&quot;,
+  &quot;policyNumber&quot;: &quot;HEPOL100001&quot;,
+  &quot;policyType&quot;: &quot;HEALTH&quot;,
+  &quot;planName&quot;: &quot;Family Health&quot;,
+  &quot;premiumAmount&quot;: 5000.00,
+  &quot;sumAssured&quot;: 500000.00,
+  &quot;startDate&quot;: &quot;2025-01-01&quot;,
+  &quot;endDate&quot;: &quot;2026-01-01&quot;,
+  &quot;status&quot;: &quot;ACTIVE&quot;,
+  &quot;createdAt&quot;: &quot;2026-02-26T10:05:00&quot;,
+  &quot;updatedAt&quot;: &quot;2026-02-26T10:05:00&quot;
+}
+</code></pre>
+<hr />
+<h2>3. Data Types Reference</h2>
+<h3>3.1 IngestionStatus (enum)</h3>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UPLOADED</td>
+<td>File uploaded, ready for processing</td>
+</tr>
+<tr>
+<td>PROCESSING</td>
+<td>Processing in progress</td>
+</tr>
+<tr>
+<td>COMPLETED</td>
+<td>Processing finished successfully</td>
+</tr>
+<tr>
+<td>FAILED</td>
+<td>Processing failed</td>
+</tr>
+</tbody>
+</table>
+<h3>3.2 Verification Failure</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>policyNumber</td>
+<td>String</td>
+<td>Policy identifier from file</td>
+</tr>
+<tr>
+<td>reason</td>
+<td>String</td>
+<td>Failure reason</td>
+</tr>
+</tbody>
+</table>
+<h3>3.3 ApiResponse (standard wrapper)</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>success</td>
+<td>boolean</td>
+<td>Request success</td>
+</tr>
+<tr>
+<td>message</td>
+<td>String</td>
+<td>Human-readable message</td>
+</tr>
+<tr>
+<td>data</td>
+<td>T</td>
+<td>Response payload</td>
+</tr>
+<tr>
+<td>error</td>
+<td>Object</td>
+<td>Present when success=false</td>
+</tr>
+<tr>
+<td>timestamp</td>
+<td>String</td>
+<td>ISO 8601 timestamp</td>
+</tr>
+</tbody>
+</table>
+<p><strong>ErrorDetails:</strong>
+| Field   | Type   | Description          |
+|---------|--------|----------------------|
+| code    | String | Error code           |
+| message | String | Error message        |
+| details | String | Optional details     |</p>
+<hr />
+<h2>4. Summary Table</h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Upload</td>
+<td>POST</td>
+<td><code>/api/public/v1/ingestion/upload</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Job Status</td>
+<td>GET</td>
+<td><code>/api/public/v1/ingestion/status/{id}</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>List Jobs</td>
+<td>GET</td>
+<td><code>/api/public/v1/ingestion/jobs</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Process</td>
+<td>POST</td>
+<td><code>/api/public/v1/ingestion/process/{id}</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Portfolio</td>
+<td>GET</td>
+<td><code>/api/public/v1/portfolio</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Portfolio</td>
+<td>GET</td>
+<td><code>/api/public/v1/portfolio/{customerId}</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Insurers</td>
+<td>GET</td>
+<td><code>/api/public/v1/metadata/insurers</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Mappings</td>
+<td>GET</td>
+<td><code>/api/public/v1/metadata/mappings</code></td>
+<td>None</td>
+</tr>
+<tr>
+<td>Upload (JWT)</td>
+<td>POST</td>
+<td><code>/api/v1/ingestion/upload</code></td>
+<td>JWT</td>
+</tr>
+<tr>
+<td>Status (JWT)</td>
+<td>GET</td>
+<td><code>/api/v1/ingestion/status/{id}</code></td>
+<td>JWT</td>
+</tr>
+<tr>
+<td>Progress</td>
+<td>PATCH</td>
+<td><code>/api/v1/ingestion/{id}/progress</code></td>
+<td>JWT</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>PATCH</td>
+<td><code>/api/v1/ingestion/{id}/status</code></td>
+<td>JWT</td>
+</tr>
+<tr>
+<td>Health</td>
+<td>GET</td>
+<td><code>/api/v1/ingestion/health</code></td>
+<td>JWT</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>End of Document</em></p></body></html>

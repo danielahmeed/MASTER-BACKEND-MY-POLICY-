@@ -1,0 +1,4 @@
+Policy Number,Customer Name,DOB,Gender,PAN,Mobile,Email,Insurer,Plan Name,Coverage Amount,Annual Premium,Policy Start Date,Policy End Date,Policy Type,City
+FAULTY001,John Smith Completely Different Person,19800101,M,AKCPK1123L,9876543210,amit.kulkarni@gmail.com,HEALTH_INSURER,Standard Plan,300000,25000,20240101,20250101,Active,PUNE
+FAULTY002,Wrong Name XYZ ABC,19950721,M,BPQPP2345M,9812345678,sneha.patil@gmail.com,HEALTH_INSURER,Standard Plan,400000,28000,20240215,20250215,Active,MUMBAI
+FAULTY003,Rahul Sanjay Deshmukh,19750620,M,CDEPD3456N,9823456789,rahul.deshmukh@gmail.co,HEALTH_INSURER,Standard Plan,500000,32000,20240301,20250301,Active,DELHI

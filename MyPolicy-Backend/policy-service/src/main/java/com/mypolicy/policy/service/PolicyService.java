@@ -1,11 +1,11 @@
 package com.mypolicy.policy.service;
 
-import com.mypolicy.policy.dto.PolicyCorrectionRequest;
 import com.mypolicy.policy.dto.PolicyRequest;
 import com.mypolicy.policy.model.Policy;
 import com.mypolicy.policy.model.PolicyStatus;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PolicyService {
   Policy createPolicy(PolicyRequest request);
@@ -14,7 +14,11 @@ public interface PolicyService {
 
   Policy getPolicyById(String id);
 
-  Policy getPolicyByNumberAndInsurerId(String policyNumber, String insurerId);
+  Optional<Policy> findByPolicyNumberAndInsurerId(String policyNumber, String insurerId);
 
-  Policy correctPolicy(String policyId, PolicyCorrectionRequest request);
+  List<Policy> getAllPolicies();
+
+  Policy updatePolicyStatus(String id, PolicyStatus status);
+
+  void deletePolicy(String id);
 }

@@ -1,16 +1,5 @@
 package com.mypolicy.pipeline.ingestion.service;
 
-<<<<<<< HEAD:MyPolicy-Backend/ingestion-service/src/main/java/com/mypolicy/ingestion/service/IngestionService.java
-import com.mypolicy.ingestion.dto.JobStatusResponse;
-import com.mypolicy.ingestion.dto.ProgressUpdateRequest;
-import com.mypolicy.ingestion.dto.StatusUpdateRequest;
-import com.mypolicy.ingestion.dto.UploadResponse;
-import com.mypolicy.ingestion.model.IngestionJob;
-import com.mypolicy.ingestion.model.IngestionStatus;
-import com.mypolicy.ingestion.repository.IngestionJobRepository;
-import com.mypolicy.ingestion.validation.InsurerSchemaValidator;
-import com.mypolicy.ingestion.validation.SchemaValidationResult;
-=======
 import com.mypolicy.pipeline.ingestion.dto.JobStatusResponse;
 import com.mypolicy.pipeline.ingestion.dto.ProgressUpdateRequest;
 import com.mypolicy.pipeline.ingestion.dto.StatusUpdateRequest;
@@ -18,8 +7,9 @@ import com.mypolicy.pipeline.ingestion.dto.UploadResponse;
 import com.mypolicy.pipeline.ingestion.model.IngestionJob;
 import com.mypolicy.pipeline.ingestion.model.IngestionStatus;
 import com.mypolicy.pipeline.ingestion.repository.IngestionJobRepository;
+import com.mypolicy.pipeline.ingestion.validation.MetadataDrivenSchemaValidator;
+import com.mypolicy.pipeline.ingestion.validation.SchemaValidationResult;
 import lombok.RequiredArgsConstructor;
->>>>>>> upstream/main:MyPolicy-Backend/data-pipeline-service/src/main/java/com/mypolicy/pipeline/ingestion/service/IngestionService.java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,8 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -51,18 +43,14 @@ public class IngestionService {
   private static final long MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
   private final IngestionJobRepository jobRepository;
-  private final InsurerSchemaValidator schemaValidator;
+  private final MetadataDrivenSchemaValidator schemaValidator;
+  @Value("${ingestion.storage.path:storage/ingestion}")
+  private String storageBasePath;
 
-<<<<<<< HEAD:MyPolicy-Backend/ingestion-service/src/main/java/com/mypolicy/ingestion/service/IngestionService.java
-  public IngestionService(IngestionJobRepository jobRepository, InsurerSchemaValidator schemaValidator) {
+  public IngestionService(IngestionJobRepository jobRepository, MetadataDrivenSchemaValidator schemaValidator) {
     this.jobRepository = jobRepository;
     this.schemaValidator = schemaValidator;
   }
-
-=======
->>>>>>> upstream/main:MyPolicy-Backend/data-pipeline-service/src/main/java/com/mypolicy/pipeline/ingestion/service/IngestionService.java
-  @Value("${ingestion.storage.path:storage/ingestion}")
-  private String storageBasePath;
 
   @Value("${ingestion.schema.validate:true}")
   private boolean schemaValidationEnabled;
@@ -84,7 +72,7 @@ public class IngestionService {
 
     // 3. Schema validation for normal files (skip for correction files)
     if (schemaValidationEnabled && "normal".equals(resolvedFileType)) {
-      SchemaValidationResult schemaResult = schemaValidator.validate(file, insurerId);
+      SchemaValidationResult schemaResult = schemaValidator.validate(file, insurerId, null);
       if (!schemaResult.isValid()) {
         throw new IllegalArgumentException(schemaResult.getErrorSummary());
       }
@@ -103,24 +91,35 @@ public class IngestionService {
       Files.copy(inputStream, filePath);
     }
 
-<<<<<<< HEAD:MyPolicy-Backend/ingestion-service/src/main/java/com/mypolicy/ingestion/service/IngestionService.java
-    log.info("File uploaded: jobId={}, insurerId={}, fileType={}, path={}", jobId, insurerId,
+    log.info("[Ingestion] File uploaded: jobId={}, insurerId={}, fileType={}, path={}", jobId, insurerId,
         resolvedFileType, filePath.toAbsolutePath());
-=======
-    log.info("[Ingestion] File uploaded: jobId={}, insurerId={}, path={}", jobId, insurerId,
-        filePath.toAbsolutePath());
->>>>>>> upstream/main:MyPolicy-Backend/data-pipeline-service/src/main/java/com/mypolicy/pipeline/ingestion/service/IngestionService.java
 
     // 5. Create ingestion job
-    IngestionJob job = new IngestionJob(jobId, insurerId, filePath.toAbsolutePath().toString(),
-        resolvedFileType, IngestionStatus.UPLOADED, 0, 0, uploadedBy, null,
-        LocalDateTime.now(), LocalDateTime.now());
+    IngestionJob job = new IngestionJob();
+    job.setJobId(jobId);
+    job.setInsurerId(insurerId);
+    job.setFilePath(filePath.toAbsolutePath().toString());
+    job.setFileType(resolvedFileType);
+    job.setStatus(IngestionStatus.UPLOADED);
+    job.setTotalRecords(0);
+    job.setProcessedRecords(0);
+    job.setUploadedBy(uploadedBy);
+    job.setFailureReason(null);
+    job.setCreatedAt(LocalDateTime.now());
+    job.setUpdatedAt(LocalDateTime.now());
 
     jobRepository.save(job);
 
     log.info("[Ingestion] Job created: jobId={}, status=UPLOADED", jobId);
 
     return new UploadResponse(jobId, IngestionStatus.UPLOADED);
+  }
+
+  /**
+   * List all ingestion jobs (MongoDB ingestion_jobs collection).
+   */
+  public List<IngestionJob> listAllJobs() {
+    return jobRepository.findAll();
   }
 
   /**
@@ -134,7 +133,7 @@ public class IngestionService {
 
     return new JobStatusResponse(job.getJobId(), job.getStatus(), job.getProcessedRecords(),
         job.getTotalRecords(), job.getFilePath(), job.getInsurerId(), job.getFileType(),
-        job.getCreatedAt(), job.getUpdatedAt());
+        job.getCreatedAt(), job.getUpdatedAt(), job.getFailureReason(), job.getVerificationFailures());
   }
         ////TODO : SHEDLOCK FOR SCHEDULING
   /**
@@ -190,6 +189,23 @@ public class IngestionService {
     jobRepository.save(job);
 
     log.info("[Ingestion] Status transition: jobId={}, {} -> {}", jobId, oldStatus, newStatus);
+  }
+
+  /**
+   * Add verification failures (policy number + reason) for a job.
+   */
+  public void addVerificationFailures(String jobId, List<Map<String, String>> failures) {
+    if (failures == null || failures.isEmpty()) return;
+
+    IngestionJob job = jobRepository.findById(jobId)
+        .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+
+    List<Map<String, String>> existing = job.getVerificationFailures();
+    if (existing == null) existing = new ArrayList<>();
+    existing.addAll(failures);
+    job.setVerificationFailures(existing);
+    job.setUpdatedAt(LocalDateTime.now());
+    jobRepository.save(job);
   }
 
   /**

@@ -1,0 +1,287 @@
+# ============================================
+# Metadata-driven source → canonical schema mapping
+# Used to map insurer CSV/Excel headers to central schema without hard-coding.
+# Add new insurers by adding an entry under insurers and defining policyTypes.
+# ============================================
+
+insurers:
+  # Health insurance (e.g. Health_Insurance.csv)
+  HEALTH_INSURER:
+    insurerName: "Health Insurance Sample"
+    policyTypes:
+      HEALTH:
+        requiredSourceColumns:
+          - "Policy Number"
+          - "Customer Name"
+          - "DOB"
+          - "PAN"
+          - "Mobile"
+          - "Email"
+          - "Insurer"
+          - "Coverage Amount"
+          - "Annual Premium"
+          - "Policy Start Date"
+          - "Policy End Date"
+          - "City"
+        fieldMappings:
+          - sourceField: "Policy Number"
+            targetField: "policyNumber"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Customer Name"
+            targetField: "customerName"
+            dataType: "STRING"
+            required: true
+          - sourceField: "DOB"
+            targetField: "dateOfBirth"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "Gender"
+            targetField: "gender"
+            dataType: "STRING"
+            required: false
+          - sourceField: "PAN"
+            targetField: "panNumber"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Mobile"
+            targetField: "mobileNumber"
+            dataType: "STRING"
+            required: true
+            transformFunction: "normalizeMobile"
+          - sourceField: "Email"
+            targetField: "email"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Insurer"
+            targetField: "insurerId"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Plan Name"
+            targetField: "planName"
+            dataType: "STRING"
+            required: false
+          - sourceField: "Coverage Amount"
+            targetField: "sumAssured"
+            dataType: "DECIMAL"
+            required: true
+            transformFunction: "normalizeCurrency"
+          - sourceField: "Annual Premium"
+            targetField: "premiumAmount"
+            dataType: "DECIMAL"
+            required: true
+            transformFunction: "normalizeCurrency"
+          - sourceField: "Policy Start Date"
+            targetField: "policyStartDate"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "Policy End Date"
+            targetField: "policyEndDate"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "Policy Type"
+            targetField: "policyType"
+            dataType: "STRING"
+            required: false
+            transformFunction: "normalizeStatus"
+          - sourceField: "City"
+            targetField: "city"
+            dataType: "STRING"
+            required: false
+
+  # Auto insurance (e.g. Auto_Insurance.csv)
+  AUTO_INSURER:
+    insurerName: "Auto Insurance Sample"
+    policyTypes:
+      MOTOR:
+        requiredSourceColumns:
+          - "PolicyNumber"
+          - "CustomerName"
+          - "DOB"
+          - "PAN"
+          - "Mobile"
+          - "Email"
+          - "Insurer"
+          - "IDV"
+          - "AnnualPremium"
+          - "PolicyStartDate"
+          - "PolicyEndDate"
+          - "City"
+        fieldMappings:
+          - sourceField: "PolicyNumber"
+            targetField: "policyNumber"
+            dataType: "STRING"
+            required: true
+          - sourceField: "CustomerName"
+            targetField: "customerName"
+            dataType: "STRING"
+            required: true
+          - sourceField: "DOB"
+            targetField: "dateOfBirth"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "PAN"
+            targetField: "panNumber"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Mobile"
+            targetField: "mobileNumber"
+            dataType: "STRING"
+            required: true
+            transformFunction: "normalizeMobile"
+          - sourceField: "Email"
+            targetField: "email"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Insurer"
+            targetField: "insurerId"
+            dataType: "STRING"
+            required: true
+          - sourceField: "VehicleType"
+            targetField: "vehicleType"
+            dataType: "STRING"
+            required: false
+          - sourceField: "VehicleRegNo"
+            targetField: "vehicleRegNo"
+            dataType: "STRING"
+            required: false
+          - sourceField: "IDV"
+            targetField: "sumAssured"
+            dataType: "DECIMAL"
+            required: true
+            transformFunction: "normalizeCurrency"
+          - sourceField: "AnnualPremium"
+            targetField: "premiumAmount"
+            dataType: "DECIMAL"
+            required: true
+            transformFunction: "normalizeCurrency"
+          - sourceField: "PolicyStartDate"
+            targetField: "policyStartDate"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "PolicyEndDate"
+            targetField: "policyEndDate"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "City"
+            targetField: "city"
+            dataType: "STRING"
+            required: false
+
+  # Life insurance (e.g. Life_Insurance.csv)
+  LIFE_INSURER:
+    insurerName: "Life Insurance Sample"
+    policyTypes:
+      TERM_LIFE:
+        requiredSourceColumns:
+          - "PolicyNum"
+          - "CustomerName"
+          - "DOB"
+          - "PAN"
+          - "Mobile"
+          - "Email"
+          - "Insurer"
+          - "SumAssured"
+          - "AnnualPrem"
+          - "PolicyStart"
+          - "PolicyEnd"
+          - "City"
+        fieldMappings:
+          - sourceField: "PolicyNum"
+            targetField: "policyNumber"
+            dataType: "STRING"
+            required: true
+          - sourceField: "CustomerName"
+            targetField: "customerName"
+            dataType: "STRING"
+            required: true
+          - sourceField: "DOB"
+            targetField: "dateOfBirth"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "Gender"
+            targetField: "gender"
+            dataType: "STRING"
+            required: false
+          - sourceField: "PAN"
+            targetField: "panNumber"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Mobile"
+            targetField: "mobileNumber"
+            dataType: "STRING"
+            required: true
+            transformFunction: "normalizeMobile"
+          - sourceField: "Email"
+            targetField: "email"
+            dataType: "STRING"
+            required: true
+          - sourceField: "Insurer"
+            targetField: "insurerId"
+            dataType: "STRING"
+            required: true
+          - sourceField: "PlanName"
+            targetField: "planName"
+            dataType: "STRING"
+            required: false
+          - sourceField: "PolicyTerm"
+            targetField: "policyTerm"
+            dataType: "INTEGER"
+            required: false
+          - sourceField: "SumAssured"
+            targetField: "sumAssured"
+            dataType: "DECIMAL"
+            required: true
+            transformFunction: "normalizeCurrency"
+          - sourceField: "AnnualPrem"
+            targetField: "premiumAmount"
+            dataType: "DECIMAL"
+            required: true
+            transformFunction: "normalizeCurrency"
+          - sourceField: "PolicyStart"
+            targetField: "policyStartDate"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "PolicyEnd"
+            targetField: "policyEndDate"
+            dataType: "DATE"
+            required: true
+            transformFunction: "normalizeDate"
+          - sourceField: "NomineeName"
+            targetField: "nomineeName"
+            dataType: "STRING"
+            required: false
+          - sourceField: "NomineeRelation"
+            targetField: "nomineeRelation"
+            dataType: "STRING"
+            required: false
+          - sourceField: "City"
+            targetField: "city"
+            dataType: "STRING"
+            required: false
+
+# Customer matching rules: order of identifiers to resolve policy → customer
+# Used by the generic matching layer (mobile, email, PAN, DOB combinations)
+matchingRules:
+  priorityOrder:
+    - "mobileNumber"
+    - "panNumber"
+    - "email"
+    - "dateOfBirth"
+  compositeRules:
+    - identifiers: ["mobileNumber", "dateOfBirth"]
+      minMatch: 2
+    - identifiers: ["email", "dateOfBirth"]
+      minMatch: 2
+    - identifiers: ["panNumber", "dateOfBirth"]
+      minMatch: 2
+    - identifiers: ["mobileNumber", "email"]
+      minMatch: 2

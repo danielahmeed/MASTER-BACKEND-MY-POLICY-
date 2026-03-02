@@ -1,7 +1,8 @@
 package com.mypolicy.customer.controller;
 
 import com.mypolicy.customer.dto.AuthResponse;
-import com.mypolicy.customer.dto.CustomerCorrectionRequest;
+import com.mypolicy.customer.dto.CustomerBulkCreateRequest;
+import com.mypolicy.customer.dto.CustomerBulkCreateResponse;
 import com.mypolicy.customer.dto.CustomerRegistrationRequest;
 import com.mypolicy.customer.dto.CustomerResponse;
 import com.mypolicy.customer.dto.CustomerUpdateRequest;
@@ -20,6 +21,11 @@ public class CustomerController {
 
   private final CustomerService customerService;
 
+  @PostMapping("/bulk")
+  public ResponseEntity<CustomerBulkCreateResponse> bulkCreate(@Valid @RequestBody java.util.List<CustomerBulkCreateRequest> requests) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(customerService.bulkCreateCustomers(requests));
+  }
+
   @PostMapping("/register")
   public ResponseEntity<CustomerResponse> register(@Valid @RequestBody CustomerRegistrationRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -31,32 +37,36 @@ public class CustomerController {
     return ResponseEntity.ok(customerService.login(request));
   }
 
-  @GetMapping("/by-pan/{panNumber}")
-  public ResponseEntity<CustomerResponse> getCustomerByPan(@PathVariable String panNumber) {
-    return ResponseEntity.ok(customerService.getCustomerByPanNumber(panNumber));
-  }
-
   @GetMapping("/{customerId}")
   public ResponseEntity<CustomerResponse> getCustomer(@PathVariable String customerId) {
     return ResponseEntity.ok(customerService.getCustomerById(customerId));
   }
 
-<<<<<<< HEAD
-  /**
-   * Correction/Patch API – update customer record (support/admin).
-   * Only non-null fields are updated. Reason is mandatory for audit.
-   */
-  @PatchMapping("/{customerId}")
-  public ResponseEntity<CustomerResponse> correctCustomer(
-      @PathVariable String customerId,
-      @Valid @RequestBody CustomerCorrectionRequest request) {
-    return ResponseEntity.ok(customerService.correctCustomer(customerId, request));
-=======
+  @GetMapping("/search/mobile/{mobile}")
+  public ResponseEntity<CustomerResponse> searchByMobile(@PathVariable String mobile) {
+    return customerService.findByMobileNumber(mobile)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+  @GetMapping("/search/email/{email}")
+  public ResponseEntity<CustomerResponse> searchByEmail(@PathVariable String email) {
+    return customerService.findByEmail(email)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+  @GetMapping("/search/pan/{pan}")
+  public ResponseEntity<CustomerResponse> searchByPan(@PathVariable String pan) {
+    return customerService.findByPanNumber(pan)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+  }
+
   @PutMapping("/{customerId}")
   public ResponseEntity<CustomerResponse> updateCustomer(
       @PathVariable String customerId,
       @Valid @RequestBody CustomerUpdateRequest request) {
     return ResponseEntity.ok(customerService.updateCustomer(customerId, request));
->>>>>>> upstream/main
   }
 }

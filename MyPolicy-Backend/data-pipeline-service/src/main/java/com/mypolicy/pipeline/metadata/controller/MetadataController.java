@@ -4,7 +4,6 @@ import com.mypolicy.pipeline.metadata.model.FieldMapping;
 import com.mypolicy.pipeline.metadata.model.InsurerConfiguration;
 import com.mypolicy.pipeline.metadata.service.MetadataService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,13 +18,17 @@ import java.util.Map;
  * - POST /api/v1/metadata/config
  * - GET /api/v1/metadata/config/{insurerId}
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/v1/metadata")
 @RequiredArgsConstructor
 public class MetadataController {
 
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MetadataController.class);
   private final MetadataService metadataService;
+
+  public MetadataController(MetadataService metadataService) {
+    this.metadataService = metadataService;
+  }
 
   /**
    * Create or update insurer configuration

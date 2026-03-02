@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Customer Identification Flowchart</title>
+<style>
+body { font-family: Arial, sans-serif; font-size: 11pt; margin: 30px; color: #333; }
+h1 { color: #1a365d; font-size: 20pt; text-align: center; margin-bottom: 10px; }
+h2 { color: #2c5282; font-size: 14pt; margin-top: 25px; margin-bottom: 15px; }
+.subtitle { text-align: center; color: #64748b; margin-bottom: 30px; font-size: 10pt; }
+
+.flowchart { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 20px 0; }
+.box { border: 2px solid #3182ce; padding: 10px 20px; text-align: center; min-width: 200px; margin: 4px 0; border-radius: 6px; background: #ebf8ff; }
+.box.start { background: #c6f6d5; border-color: #38a169; }
+.box.match { background: #c6f6d5; border-color: #38a169; font-weight: bold; }
+.box.end { background: #fed7d7; border-color: #e53e3e; }
+.box.decision { background: #fef3c7; border-color: #d69e2e; }
+.arrow { font-size: 18pt; color: #3182ce; }
+.arrow-down { display: block; text-align: center; margin: 2px 0; }
+.branch { display: flex; gap: 40px; justify-content: center; margin: 10px 0; }
+.branch-item { display: flex; flex-direction: column; align-items: center; }
+.branch-label { font-size: 9pt; color: #64748b; margin: 4px 0; }
+
+table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+th { background: #edf2f7; font-weight: bold; }
+
+@media print { body { margin: 15px; } .box { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Customer Identification Flowchart</h1>
+<p class="subtitle">Multi-Level Matching Procedure (Excluding Fuzzy Matching)</p>
+
+<h2>Identifier Hierarchy Table</h2>
+<table>
+<tr><th>Level</th><th>Identifier</th><th>Type</th><th>Confidence</th><th>When to Use</th></tr>
+<tr><td><strong>1</strong></td><td><strong>PAN</strong></td><td>Exact</td><td>Highest</td><td>Government-issued; unique per person in India</td></tr>
+<tr><td><strong>2</strong></td><td><strong>Email</strong></td><td>Exact</td><td>High</td><td>Unique per user; rarely shared</td></tr>
+<tr><td><strong>3</strong></td><td><strong>Mobile Number</strong></td><td>Exact</td><td>High</td><td>Unique per SIM; stable identifier</td></tr>
+<tr><td><strong>4</strong></td><td><strong>PAN + Mobile</strong></td><td>Composite</td><td>High</td><td>Both must match</td></tr>
+<tr><td><strong>5</strong></td><td><strong>PAN + Email</strong></td><td>Composite</td><td>High</td><td>Both must match</td></tr>
+<tr><td><strong>6</strong></td><td><strong>Mobile + DOB</strong></td><td>Composite</td><td>Medium</td><td>Reduces false positives</td></tr>
+<tr><td><strong>7</strong></td><td><strong>Email + DOB</strong></td><td>Composite</td><td>Medium</td><td>Reduces false positives</td></tr>
+<tr><td><strong>8</strong></td><td><strong>No Match</strong></td><td>—</td><td>—</td><td>Create new customer or route to manual review</td></tr>
+</table>
+
+<h2>Flowchart</h2>
+
+<div class="flowchart">
+  <div class="box start">START<br>Input: Policy record (PAN, email, mobile, DOB)</div>
+  <div class="arrow-down">&#8595;</div>
+  
+  <div class="box decision">Level 1: PAN valid?<br>Search by PAN</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Found?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: HIGH</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">Not found</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="box decision" style="margin-top: 20px;">Level 2: Email valid?<br>Search by Email</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Found?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: HIGH</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">Not found</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="box decision" style="margin-top: 20px;">Level 3: Mobile valid?<br>Search by Mobile</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Found?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: HIGH</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">Not found</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="box decision" style="margin-top: 20px;">Level 4: PAN + Mobile<br>Both available? Search PAN, verify Mobile</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Both match?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: HIGH</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">No</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="box decision" style="margin-top: 20px;">Level 5: PAN + Email<br>Both available? Search PAN, verify Email</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Both match?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: HIGH</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">No</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="box decision" style="margin-top: 20px;">Level 6: Mobile + DOB<br>Search Mobile, verify DOB</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Both match?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: MEDIUM</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">No</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="box decision" style="margin-top: 20px;">Level 7: Email + DOB<br>Search Email, verify DOB</div>
+  <div class="arrow-down">&#8595;</div>
+  <div class="branch">
+    <div class="branch-item">
+      <div class="branch-label">Both match?</div>
+      <div class="box match">&#10004; MATCH<br>Confidence: MEDIUM</div>
+    </div>
+    <div class="branch-item">
+      <div class="branch-label">No</div>
+      <div class="arrow-down">&#8595;</div>
+    </div>
+  </div>
+
+  <div class="arrow-down" style="margin-top: 20px;">&#8595;</div>
+  <div class="box end">Level 8: NO MATCH<br>Create New Customer OR Manual Review</div>
+</div>
+
+<h2>Simplified Linear Flow</h2>
+<pre style="background: #f8fafc; padding: 15px; border: 1px solid #e2e8f0; overflow-x: auto;">
+START (Policy record: PAN, email, mobile, DOB)
+    |
+    v
+[1] PAN valid? --> Search by PAN --> Found? --YES--> MATCH (HIGH) [END]
+    |                                    --NO--> continue
+    v
+[2] Email valid? --> Search by Email --> Found? --YES--> MATCH (HIGH) [END]
+    |                                         --NO--> continue
+    v
+[3] Mobile valid? --> Search by Mobile --> Found? --YES--> MATCH (HIGH) [END]
+    |                                            --NO--> continue
+    v
+[4] PAN + Mobile? --> Search PAN, verify Mobile --> Both match? --YES--> MATCH (HIGH) [END]
+    |                                                    --NO--> continue
+    v
+[5] PAN + Email? --> Search PAN, verify Email --> Both match? --YES--> MATCH (HIGH) [END]
+    |                                                   --NO--> continue
+    v
+[6] Mobile + DOB? --> Search Mobile, verify DOB --> Both match? --YES--> MATCH (MEDIUM) [END]
+    |                                                     --NO--> continue
+    v
+[7] Email + DOB? --> Search Email, verify DOB --> Both match? --YES--> MATCH (MEDIUM) [END]
+    |                                                    --NO--> continue
+    v
+[8] NO MATCH --> Create New Customer OR Manual Review [END]
+</pre>
+
+<p style="margin-top: 30px; font-size: 9pt; color: #64748b;">
+<strong>Note:</strong> Fuzzy name matching has been excluded from this procedure per requirements.
+All matches require at least one strong identifier (PAN, Email, or Mobile).
+</p>
+
+</body>
+</html>

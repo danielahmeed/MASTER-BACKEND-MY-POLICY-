@@ -20,12 +20,16 @@ import java.util.Optional;
  * NOTE: This is now a service layer class, not a separate microservice!
  * No HTTP calls - just method calls within the same JVM
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MetadataService {
 
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MetadataService.class);
   private final MetadataRepository repository;
+
+  public MetadataService(MetadataRepository repository) {
+    this.repository = repository;
+  }
 
   /**
    * Save or update insurer configuration

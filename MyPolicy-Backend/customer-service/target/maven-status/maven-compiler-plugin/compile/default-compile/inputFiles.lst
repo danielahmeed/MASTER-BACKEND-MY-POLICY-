@@ -1,5 +1,6 @@
+C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\CustomerUpdateRequest.java
+C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\CustomerBulkCreateResponse.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\controller\HealthController.java
-C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\CustomerCorrectionRequest.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\exception\GlobalExceptionHandler.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\service\impl\CustomerServiceImpl.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\CustomerResponse.java
@@ -11,6 +12,7 @@ C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\CustomerServiceApplication.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\AuthResponse.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\model\CustomerStatus.java
+C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\CustomerBulkCreateRequest.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\CustomerRegistrationRequest.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\security\JwtService.java
 C:\Users\profe\Desktop\MASTER-BACKEND-MY-POLICY--main\MyPolicy-Backend\customer-service\src\main\java\com\mypolicy\customer\dto\LoginRequest.java
