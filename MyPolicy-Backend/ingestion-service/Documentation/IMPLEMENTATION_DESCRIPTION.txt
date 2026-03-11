@@ -1,0 +1,187 @@
+================================================================================
+INGESTION SERVICE - IMPLEMENTATION DESCRIPTION
+================================================================================
+
+This document describes how the Ingestion Service functions are implemented
+at the code level.
+
+
+--------------------------------------------------------------------------------
+1. ACCEPTING EXCEL FILES FROM THE BFF
+--------------------------------------------------------------------------------
+
+BFF Layer (FileUploadController):
+- Endpoint: POST /api/bff/upload
+- Accepts: file (MultipartFile), uploadedBy (String), insurerId (String)
+- Uses IngestionClient (Feign) to forward the request to Ingestion Service
+- IngestionClient.uploadFile() calls POST /api/v1/ingestion/upload on the
+  Ingestion Service (URL from ingestion.service.url, default localhost:8082)
+
+Ingestion Layer (IngestionController.uploadFile):
+- Endpoint: POST /api/v1/ingestion/upload
+- Extracts file, insurerId, uploadedBy from multipart form request
+- Delegates to IngestionService.uploadFile()
+- Returns 201 CREATED with UploadResponse { jobId, status }
+- Catches IllegalArgumentException (validation) and IOException (storage)
+
+
+--------------------------------------------------------------------------------
+2. VALIDATING AND STORING THE FILE
+--------------------------------------------------------------------------------
+
+Validation (IngestionService.validateFile - private):
+- Checks file is not null and not empty
+- Checks file size <= 50MB (MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024)
+- Checks filename is present and non-blank
+- Checks extension is .xls, .xlsx, or .csv (case-insensitive)
+- getFileExtension() extracts extension via lastIndexOf('.')
+- Throws IllegalArgumentException on any failure
+
+Storage (IngestionService.uploadFile):
+- Base path from config: ingestion.storage.path (default: storage/ingestion)
+- Creates storage directory if it does not exist (Files.createDirectories)
+- File named as: {jobId}{extension} (e.g., d9e724f2-....xlsx or ...csv)
+- Uses Files.copy(inputStream, filePath) to write file to disk
+- Full path stored in IngestionJob.filePath (absolute path)
+
+
+--------------------------------------------------------------------------------
+3. CREATING A UNIQUE INGESTION JOB
+--------------------------------------------------------------------------------
+
+Job ID Generation:
+- UUID.randomUUID().toString() - globally unique identifier
+
+Job Creation (IngestionService.uploadFile):
+- IngestionJob built with: jobId, insurerId, filePath, status=UPLOADED,
+  totalRecords=0, processedRecords=0, uploadedBy, failureReason=null,
+  createdAt=now, updatedAt=now
+- jobRepository.save(job) - persists to MongoDB collection "ingestion_jobs"
+- Returns UploadResponse(jobId, UPLOADED)
+
+
+--------------------------------------------------------------------------------
+4. TRACKING JOB STATUS AND PROGRESS IN MONGODB
+--------------------------------------------------------------------------------
+
+Data Model (IngestionJob - MongoDB document):
+- jobId (String, @Id - document primary key)
+- insurerId, filePath, uploadedBy, failureReason (String)
+- status (IngestionStatus enum: UPLOADED, PROCESSING, COMPLETED, FAILED)
+- totalRecords, processedRecords (int)
+- createdAt, updatedAt (LocalDateTime)
+- Indexes on: status, createdAt
+
+Repository:
+- IngestionJobRepository extends MongoRepository<IngestionJob, String>
+- findById(jobId) for lookups
+- save() for create/update
+
+Status Updates (by Processing Service):
+- updateProgress(): increments processedRecords when status=PROCESSING
+- updateStatus(): transitions state per state machine
+- setTotalRecords(): sets total when status is UPLOADED or PROCESSING
+
+
+--------------------------------------------------------------------------------
+5. API TO FETCH JOB METADATA (FOR PROCESSING SERVICE)
+--------------------------------------------------------------------------------
+
+Endpoint: GET /api/v1/ingestion/status/{jobId}
+
+Implementation (IngestionController.getJobStatus):
+- IngestionService.getJobStatus(jobId)
+- jobRepository.findById(jobId) - throws if not found
+- Builds JobStatusResponse with: jobId, status, processedRecords, totalRecords,
+  filePath, insurerId, createdAt, updatedAt
+- Processing Service uses filePath to read the Excel file and insurerId for
+  metadata mapping lookup
+
+
+--------------------------------------------------------------------------------
+6. API TO FETCH PROGRESS (FOR UI VIA BFF)
+--------------------------------------------------------------------------------
+
+BFF Layer:
+- Endpoint: GET /api/bff/upload/status/{jobId}
+- FileUploadController.getJobStatus() calls IngestionClient.getJobStatus(jobId)
+- Feign client issues GET /api/v1/ingestion/status/{jobId} to Ingestion Service
+- Response passed through to UI (contains processedRecords, totalRecords, status)
+
+Ingestion Layer:
+- Same getJobStatus endpoint as above - returns full JobStatusResponse
+
+
+--------------------------------------------------------------------------------
+7. INTERNAL APIS FOR PROCESSING SERVICE (STATE UPDATES)
+--------------------------------------------------------------------------------
+
+PATCH /api/v1/ingestion/{jobId}/progress:
+- Request body: { "processedRecordsDelta": 1 }
+- Must be positive; job must be in PROCESSING state
+- Adds delta to processedRecords, updates updatedAt, saves to MongoDB
+- Returns 204 No Content
+- Idempotent when retried (additive)
+
+PATCH /api/v1/ingestion/{jobId}/status:
+- Request body: { "status": "PROCESSING"|"COMPLETED"|"FAILED", "failureReason": "..." }
+- validateStateTransition() enforces:
+  - UPLOADED -> PROCESSING only
+  - PROCESSING -> COMPLETED or FAILED only
+  - No transitions from COMPLETED or FAILED
+- Updates status, failureReason (for FAILED), updatedAt
+- Returns 204 No Content
+
+
+--------------------------------------------------------------------------------
+8. STATE MACHINE (SINGLE SOURCE OF TRUTH)
+--------------------------------------------------------------------------------
+
+Valid transitions:
+  UPLOADED --> PROCESSING --> COMPLETED
+                          --> FAILED
+
+Invalid:
+- UPLOADED -> COMPLETED (skip PROCESSING)
+- PROCESSING -> UPLOADED (rollback)
+- COMPLETED/FAILED -> any (terminal states)
+
+Implementation: validateStateTransition() in IngestionService - switch on
+current status, throw IllegalStateException for invalid next status.
+
+
+--------------------------------------------------------------------------------
+9. ERROR HANDLING
+--------------------------------------------------------------------------------
+
+GlobalExceptionHandler (RestControllerAdvice):
+- IllegalArgumentException -> 400 Bad Request, { "error": message }
+- IllegalStateException -> 409 Conflict, { "error": message }
+- RuntimeException -> 500 Internal Server Error, { "error": "Internal server error" }
+
+
+--------------------------------------------------------------------------------
+10. CONFIGURATION
+--------------------------------------------------------------------------------
+
+application.properties:
+- server.port=8082
+- spring.data.mongodb: host=localhost, port=27017, database=mypolicy_ingestion_db
+- ingestion.storage.path=storage/ingestion
+- spring.servlet.multipart.max-file-size=50MB
+
+
+--------------------------------------------------------------------------------
+FILES REFERENCE
+--------------------------------------------------------------------------------
+
+Ingestion Service:
+- IngestionController.java   - REST endpoints
+- IngestionService.java      - Business logic, validation, state machine
+- IngestionJob.java          - MongoDB document model
+- IngestionJobRepository.java - MongoDB data access
+- IngestionStatus.java       - UPLOADED, PROCESSING, COMPLETED, FAILED
+
+BFF (proxying to Ingestion):
+- FileUploadController.java  - POST /upload, GET /upload/status/{jobId}
+- IngestionClient.java       - Feign client for Ingestion Service

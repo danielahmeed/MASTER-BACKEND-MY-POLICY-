@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingestion Service - Unified Testing Guide | MyPolicy Backend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-text: #1e293b;
+      --color-text-muted: #64748b;
+      --color-primary: #0f766e;
+      --color-primary-light: #ccfbf1;
+      --color-accent: #0369a1;
+      --color-border: #e2e8f0;
+      --color-code-bg: #f1f5f9;
+      --color-success: #059669;
+      --color-warning: #d97706;
+      --color-error: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: var(--color-bg);
+      margin: 0;
+      padding: 2rem;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 0 0 0.5rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 3px solid var(--color-primary);
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--color-text-muted);
+      margin-bottom: 2rem;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--color-text);
+      margin: 2rem 0 1rem 0;
+      padding-left: 0.5rem;
+      border-left: 4px solid var(--color-primary);
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--color-accent);
+      margin: 1.5rem 0 0.75rem 0;
+    }
+
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin: 1.25rem 0 0.5rem 0;
+    }
+
+    p {
+      margin: 0 0 0.75rem 0;
+    }
+
+    ul, ol {
+      margin: 0 0 1rem 0;
+      padding-left: 1.5rem;
+    }
+
+    li {
+      margin-bottom: 0.35rem;
+    }
+
+    code, pre, .code-block {
+      font-family: 'Source Code Pro', 'Consolas', monospace;
+      font-size: 0.88em;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      padding: 0.15em 0.4em;
+    }
+
+    pre {
+      display: block;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 1rem 0;
+      border-radius: 6px;
+    }
+
+    pre code {
+      padding: 0;
+      border: none;
+      background: none;
+    }
+
+    .step-block {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .step-block h4 {
+      margin-top: 0;
+      color: var(--color-primary);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.95em;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 0.6rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    th {
+      background: var(--color-primary-light);
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2em 0.5em;
+      font-size: 0.75em;
+      font-weight: 600;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-success { background: #d1fae5; color: var(--color-success); }
+    .badge-error { background: #fee2e2; color: var(--color-error); }
+    .badge-warning { background: #fef3c7; color: var(--color-warning); }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 2rem 0;
+    }
+
+    .footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      font-size: 0.9em;
+      color: var(--color-text-muted);
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 1rem;
+      }
+      .step-block {
+        box-shadow: none;
+        page-break-inside: avoid;
+      }
+      h2, h3 {
+        page-break-after: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Ingestion Service — Unified Testing Guide</h1>
+  <p class="subtitle">Step-by-step instructions to test all ingestion service features: normal uploads, correction file uploads, internal APIs, exposed customer API, and error handling.</p>
+
+  <h2>1. Prerequisites</h2>
+
+  <h3>1.1 Required Software</h3>
+  <ul>
+    <li>Java 17+</li>
+    <li>Maven 3.8+</li>
+    <li>MongoDB running locally on localhost:27017</li>
+    <li>Postman (or curl) for API testing</li>
+  </ul>
+
+  <h3>1.2 Start MongoDB (if not running)</h3>
+  <table>
+    <tr><th>Platform</th><th>Command</th></tr>
+    <tr><td>Windows</td><td><code>mongod</code></td></tr>
+    <tr><td>Linux/Mac</td><td><code>mongod --dbpath /data/db</code></td></tr>
+    <tr><td>Docker</td><td><code>docker run -d -p 27017:27017 mongo:7</code></td></tr>
+  </table>
+
+  <h3>1.3 Start Ingestion Service</h3>
+  <pre><code>cd MyPolicy-Backend/ingestion-service
+mvn spring-boot:run</code></pre>
+  <p>Verify: Service starts on <code>http://localhost:8082</code></p>
+
+  <h3>1.4 Sample Files</h3>
+  <ul>
+    <li><strong>Normal upload:</strong> Datasets/Auto_Insurance.csv (or any .csv/.xls/.xlsx)</li>
+    <li><strong>Correction:</strong> Auto_Insurance_correction.csv (policyNumber, panNumber, and corrected columns)</li>
+  </ul>
+
+  <hr>
+  <h2>2. Base URL & Conventions</h2>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Base URL</td><td><code>http://localhost:8082</code></td></tr>
+    <tr><td>Port</td><td>8082</td></tr>
+    <tr><td>API Key (exposed API)</td><td><code>mypolicy-customer-api-key-dev</code></td></tr>
+    <tr><td>File rules</td><td>Allowed: .csv, .xls, .xlsx | Max: 50 MB | Encoding: UTF-8</td></tr>
+  </table>
+
+  <hr>
+  <h2>3. Part A: Internal APIs (No API Key)</h2>
+  <p>Used by BFF, Processing Service, or internal tools. No X-API-Key required.</p>
+
+  <div class="step-block">
+    <h4>3.1 Test: Normal File Upload</h4>
+    <p><strong>Purpose:</strong> Upload a policy file for initial ingestion (INSERT flow).</p>
+    <p><strong>Postman:</strong></p>
+    <ol>
+      <li>Method: POST</li>
+      <li>URL: <code>http://localhost:8082/api/v1/ingestion/upload</code></li>
+      <li>Body: form-data — file [File], insurerId [Text]: HDFC_LIFE, uploadedBy [Text]: test-user</li>
+    </ol>
+    <p><strong>curl (Windows):</strong></p>
+    <pre><code>curl -X POST http://localhost:8082/api/v1/ingestion/upload ^
+  -F "file=@Datasets/Auto_Insurance.csv" ^
+  -F "insurerId=HDFC_LIFE" ^
+  -F "uploadedBy=test-user"</code></pre>
+    <p><strong>Expected Response:</strong> <span class="badge badge-success">201 Created</span></p>
+    <pre><code>{
+  "jobId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "status": "UPLOADED"
+}</code></pre>
+    <p>Save the <code>jobId</code> for steps 3.4 and 3.5.</p>
+  </div>
+
+  <div class="step-block">
+    <h4>3.2 Test: Correction File Upload (via Parameter)</h4>
+    <p><strong>Purpose:</strong> Upload a delta/correction file for bulk updates (UPDATE flow).</p>
+    <p>Add form-data key: <code>fileType</code> [Text] → <code>correction</code></p>
+    <table>
+      <tr><th>Key</th><th>Type</th><th>Value</th></tr>
+      <tr><td>file</td><td>File</td><td>Auto_Insurance_correction.csv</td></tr>
+      <tr><td>insurerId</td><td>Text</td><td>HDFC_LIFE</td></tr>
+      <tr><td>uploadedBy</td><td>Text</td><td>data-ops-user</td></tr>
+      <tr><td>fileType</td><td>Text</td><td>correction</td></tr>
+    </table>
+  </div>
+
+  <div class="step-block">
+    <h4>3.3 Test: Correction File Upload (via Filename Convention)</h4>
+    <p>Same as 3.2, but detected automatically when filename contains <code>_correction</code> (e.g., Auto_Insurance_correction.csv). No fileType param needed.</p>
+  </div>
+
+  <div class="step-block">
+    <h4>3.4 Test: Get Job Status</h4>
+    <p><strong>Method:</strong> GET | <strong>URL:</strong> <code>http://localhost:8082/api/v1/ingestion/status/{jobId}</code></p>
+    <p><strong>Expected Response:</strong> 200 OK with jobId, status, processedRecords, totalRecords, filePath, insurerId, fileType, createdAt, updatedAt.</p>
+  </div>
+
+  <div class="step-block">
+    <h4>3.5 Test: Update Progress (Processing Service)</h4>
+    <p><strong>Prerequisite:</strong> Job must be in PROCESSING state (see 3.6).</p>
+    <p><strong>Method:</strong> PATCH | <strong>URL:</strong> <code>http://localhost:8082/api/v1/ingestion/{jobId}/progress</code></p>
+    <p><strong>Headers:</strong> Content-Type: application/json</p>
+    <p><strong>Body:</strong></p>
+    <pre><code>{
+  "processedRecordsDelta": 10
+}</code></pre>
+    <p><strong>Expected:</strong> 204 No Content</p>
+  </div>
+
+  <div class="step-block">
+    <h4>3.6 Test: Update Status (Processing Service)</h4>
+    <p><strong>Transitions:</strong> UPLOADED → PROCESSING → COMPLETED | FAILED</p>
+    <p><strong>Method:</strong> PATCH | <strong>URL:</strong> <code>http://localhost:8082/api/v1/ingestion/{jobId}/status</code></p>
+    <p><strong>Body examples:</strong></p>
+    <pre><code>{ "status": "PROCESSING" }
+{ "status": "COMPLETED" }
+{ "status": "FAILED", "failureReason": "Validation failed: invalid date in row 5" }</code></pre>
+    <p><strong>Expected:</strong> 204 No Content</p>
+  </div>
+
+  <hr>
+  <h2>4. Part B: Exposed / Public API (X-API-Key Required)</h2>
+  <p>Used by external customers. Requires valid X-API-Key header.</p>
+
+  <div class="step-block">
+    <h4>4.1 Test: Public Upload (Normal)</h4>
+    <p><strong>Headers:</strong> X-API-Key: mypolicy-customer-api-key-dev</p>
+    <p><strong>URL:</strong> POST <code>http://localhost:8082/api/public/v1/ingestion/upload</code></p>
+    <p><strong>Body:</strong> form-data — file, insurerId: HDFC_LIFE, uploadedBy: customer-user-001</p>
+    <p><strong>Expected:</strong> 201 Created (same as 3.1)</p>
+  </div>
+
+  <div class="step-block">
+    <h4>4.2 Test: Public Upload (Correction)</h4>
+    <p>Same as 4.1, but add <code>fileType=correction</code> or use <code>*_correction.csv</code> filename.</p>
+  </div>
+
+  <div class="step-block">
+    <h4>4.3 Test: Public Job Status</h4>
+    <p><strong>Method:</strong> GET | <strong>URL:</strong> <code>http://localhost:8082/api/public/v1/ingestion/status/{jobId}</code></p>
+    <p><strong>Headers:</strong> X-API-Key: mypolicy-customer-api-key-dev</p>
+  </div>
+
+  <div class="step-block">
+    <h4>4.4 Test: Auth Failure — Missing API Key</h4>
+    <p>Same request as 4.1 but <strong>do not</strong> add X-API-Key header.</p>
+    <p><strong>Expected:</strong> <span class="badge badge-error">401 Unauthorized</span> — <code>{"error": "Missing X-API-Key header"}</code></p>
+  </div>
+
+  <div class="step-block">
+    <h4>4.5 Test: Auth Failure — Invalid API Key</h4>
+    <p>Use X-API-Key: wrong-key-123</p>
+    <p><strong>Expected:</strong> <span class="badge badge-error">401 Unauthorized</span> — <code>{"error": "Invalid API key"}</code></p>
+  </div>
+
+  <hr>
+  <h2>5. Recommended Test Sequences</h2>
+
+  <h3>Sequence A: Full Normal Ingestion Flow</h3>
+  <ol>
+    <li>Upload file (3.1) → Get jobId</li>
+    <li>Get status (3.4) → Verify UPLOADED, fileType=normal</li>
+    <li>Update status (3.6) → PROCESSING</li>
+    <li>Update progress (3.5) → processedRecordsDelta: 50</li>
+    <li>Get status (3.4) → Verify processedRecords updated</li>
+    <li>Update status (3.6) → COMPLETED</li>
+    <li>Get status (3.4) → Verify final COMPLETED</li>
+  </ol>
+
+  <h3>Sequence B: Correction File Flow</h3>
+  <ol>
+    <li>Create correction CSV (Policy Number, PAN, mobileNumber, customerName, etc.)</li>
+    <li>Upload correction (3.2 or 3.3) → Get jobId</li>
+    <li>Get status (3.4) → Verify fileType=correction</li>
+    <li>Trigger Processing Service with isCorrection=true</li>
+  </ol>
+
+  <h3>Sequence C: Exposed API End-to-End</h3>
+  <ol>
+    <li>Public upload (4.1) → Get jobId</li>
+    <li>Public status (4.3) → Verify UPLOADED</li>
+    <li>Optional: Test auth failures (4.4, 4.5)</li>
+  </ol>
+
+  <hr>
+  <h2>6. Error Responses Reference</h2>
+  <table>
+    <tr><th>Code</th><th>Errors</th></tr>
+    <tr><td>400</td><td>File is empty or missing; Invalid file type; File size exceeds 50MB; Job not found; processedRecordsDelta must be positive; status is required</td></tr>
+    <tr><td>401</td><td>Missing X-API-Key header; Invalid API key</td></tr>
+    <tr><td>404</td><td>Job not found</td></tr>
+    <tr><td>409</td><td>Invalid transition; Cannot update progress (job must be PROCESSING); No transitions from terminal state</td></tr>
+    <tr><td>500/503</td><td>Database or internal errors</td></tr>
+  </table>
+
+  <hr>
+  <h2>7. Postman Tips</h2>
+  <ul>
+    <li>Environment: baseUrl = http://localhost:8082, jobId = (from response), apiKey = mypolicy-customer-api-key-dev</li>
+    <li>Tests tab to save jobId: <code>pm.environment.set("jobId", pm.response.json().jobId);</code></li>
+  </ul>
+
+  <hr>
+  <h2>8. Configuration</h2>
+  <pre><code>server.port=8082
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=mypolicy_ingestion_db
+ingestion.customer.api-keys=mypolicy-customer-api-key-dev
+ingestion.storage.path=storage/ingestion</code></pre>
+
+  <hr>
+  <h2>9. Troubleshooting</h2>
+  <ul>
+    <li><strong>503 / Database error:</strong> Ensure MongoDB is running on 27017</li>
+    <li><strong>401 on /api/public:</strong> Add X-API-Key header with correct value</li>
+    <li><strong>File not found:</strong> Check ingestion.storage.path</li>
+    <li><strong>Port in use:</strong> Change server.port or stop conflicting process</li>
+  </ul>
+
+  <div class="footer">
+    <strong>Document:</strong> Ingestion Service Unified Testing Guide | MyPolicy Backend<br>
+    <strong>Version:</strong> 1.0
+  </div>
+</body>
+</html>

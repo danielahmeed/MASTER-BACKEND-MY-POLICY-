@@ -1,0 +1,9 @@
+# Local profile: same as default (H2 only, no MongoDB)
+# Run: mvn spring-boot:run "-Dspring-boot.run.profiles=local"
+spring:
+  jpa:
+    show-sql: true
+
+ingestion:
+  storage:
+    path: storage/ingestion

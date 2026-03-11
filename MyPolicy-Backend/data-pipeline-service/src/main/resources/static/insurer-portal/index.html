@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insurer Portal – Policy File Upload</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="currentColor"/>
+            <path d="M10 22V10l6 6 6-6v12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>MyPolicy</span>
+        </div>
+        <h1>Insurer Portal</h1>
+        <p class="subtitle">Upload and process policy files (CSV/Excel)</p>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="card upload-card">
+        <h2>1. Upload Policy File</h2>
+        <p class="card-desc">Select your CSV or Excel policy file and choose the insurer type. Customers must exist in customer-service; policies will be matched by mobile, email, or PAN.</p>
+        <form id="upload-form" class="form">
+          <div class="form-group">
+            <label for="file">Policy File *</label>
+            <div class="file-input-wrapper">
+              <input type="file" id="file" name="file" accept=".csv,.xls,.xlsx" required>
+              <span class="file-label" id="file-label">Choose CSV or Excel file</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="insurerId">Insurer Type *</label>
+              <select id="insurerId" name="insurerId" required>
+                <option value="">Select insurer...</option>
+                <option value="HEALTH_INSURER">Health Insurance</option>
+                <option value="AUTO_INSURER">Auto / Motor Insurance</option>
+                <option value="LIFE_INSURER">Life Insurance</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="uploadedBy">Uploaded By *</label>
+              <input type="text" id="uploadedBy" name="uploadedBy" placeholder="e.g. insurer@company.com" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="upload-btn">
+            <span class="btn-text">Upload File</span>
+            <span class="btn-loading" aria-hidden="true"></span>
+          </button>
+        </form>
+      </section>
+
+      <section class="card job-card" id="job-section" style="display: none;">
+        <h2>2. Job Details</h2>
+        <div class="job-info">
+          <div class="job-id-row">
+            <strong>Job ID:</strong>
+            <code id="job-id"></code>
+            <button type="button" class="btn-icon" id="copy-job-id" title="Copy Job ID">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+          <div class="status-badge" id="status-badge">UPLOADED</div>
+          <div class="status-detail" id="status-detail"></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="process-btn">
+            <span class="btn-text">Start Processing</span>
+            <span class="btn-loading" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="btn btn-outline" id="refresh-status-btn">Refresh Status</button>
+        </div>
+      </section>
+
+      <section class="card result-card" id="result-section" style="display: none;">
+        <h2>3. Processing Result</h2>
+        <div class="result-grid">
+          <div class="result-item">
+            <span class="result-label">Total Records</span>
+            <span class="result-value" id="total-records">–</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Processed</span>
+            <span class="result-value" id="processed-records">–</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Status</span>
+            <span class="result-value status-text" id="final-status">–</span>
+          </div>
+        </div>
+        <div id="failure-reason" class="failure-reason" style="display: none;"></div>
+        <div id="verification-failures" class="verification-failures" style="display: none;">
+          <h3 class="verification-failures-title">Verification Failures</h3>
+          <p class="verification-failures-desc">The following policies could not be matched or verified:</p>
+          <div id="verification-failures-list" class="verification-failures-list"></div>
+        </div>
+      </section>
+
+      <div id="toast" class="toast" aria-live="polite"></div>
+    </main>
+
+    <footer class="footer">
+      <p>Data Pipeline Service · Insurer Portal v1.0 · <a href="/api/public/v1/portfolio" target="_blank">View Customer Portfolios</a> · <a href="/api/public/v1/ingestion/jobs" target="_blank">View MongoDB Jobs</a> · <a href="/api/public/v1/metadata/insurers" target="_blank">View Metadata</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -7,6 +7,8 @@ import com.mypolicy.pipeline.ingestion.dto.UploadResponse;
 import com.mypolicy.pipeline.ingestion.model.IngestionJob;
 import com.mypolicy.pipeline.ingestion.model.IngestionStatus;
 import com.mypolicy.pipeline.ingestion.repository.IngestionJobRepository;
+import com.mypolicy.pipeline.ingestion.validation.MetadataDrivenSchemaValidator;
+import com.mypolicy.pipeline.ingestion.validation.SchemaValidationResult;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,8 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,22 +43,42 @@ public class IngestionService {
   private static final long MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
   private final IngestionJobRepository jobRepository;
-
+  private final MetadataDrivenSchemaValidator schemaValidator;
   @Value("${ingestion.storage.path:storage/ingestion}")
   private String storageBasePath;
 
+  public IngestionService(IngestionJobRepository jobRepository, MetadataDrivenSchemaValidator schemaValidator) {
+    this.jobRepository = jobRepository;
+    this.schemaValidator = schemaValidator;
+  }
+
+  @Value("${ingestion.schema.validate:true}")
+  private boolean schemaValidationEnabled;
+
   /**
    * Upload file (Excel or CSV), persist to storage, create job record.
+   * @param fileType "correction" for delta/correction files (triggers UPDATE); "normal" (default) for new data.
    */
-  public UploadResponse uploadFile(MultipartFile file, String insurerId, String uploadedBy)
-      throws IOException {
+  public UploadResponse uploadFile(MultipartFile file, String insurerId, String uploadedBy,
+      String fileType) throws IOException {
 
     log.info("[Ingestion] Starting file upload: insurerId={}, filename={}", insurerId, file.getOriginalFilename());
 
     // 1. Validate file
     validateFile(file);
 
-    // 2. Generate jobId and save file
+    // 2. Detect file type: param, or filename *_correction.csv
+    String resolvedFileType = resolveFileType(fileType, file.getOriginalFilename());
+
+    // 3. Schema validation for normal files (skip for correction files)
+    if (schemaValidationEnabled && "normal".equals(resolvedFileType)) {
+      SchemaValidationResult schemaResult = schemaValidator.validate(file, insurerId, null);
+      if (!schemaResult.isValid()) {
+        throw new IllegalArgumentException(schemaResult.getErrorSummary());
+      }
+    }
+
+    // 4. Generate jobId and save file
     String jobId = UUID.randomUUID().toString();
     String extension = getFileExtension(file.getOriginalFilename());
     Path storagePath = Paths.get(storageBasePath);
@@ -67,18 +91,35 @@ public class IngestionService {
       Files.copy(inputStream, filePath);
     }
 
-    log.info("[Ingestion] File uploaded: jobId={}, insurerId={}, path={}", jobId, insurerId,
-        filePath.toAbsolutePath());
+    log.info("[Ingestion] File uploaded: jobId={}, insurerId={}, fileType={}, path={}", jobId, insurerId,
+        resolvedFileType, filePath.toAbsolutePath());
 
-    // 3. Create ingestion job
-    IngestionJob job = new IngestionJob(jobId, insurerId, filePath.toAbsolutePath().toString(),
-        IngestionStatus.UPLOADED, 0, 0, uploadedBy, null, LocalDateTime.now(), LocalDateTime.now());
+    // 5. Create ingestion job
+    IngestionJob job = new IngestionJob();
+    job.setJobId(jobId);
+    job.setInsurerId(insurerId);
+    job.setFilePath(filePath.toAbsolutePath().toString());
+    job.setFileType(resolvedFileType);
+    job.setStatus(IngestionStatus.UPLOADED);
+    job.setTotalRecords(0);
+    job.setProcessedRecords(0);
+    job.setUploadedBy(uploadedBy);
+    job.setFailureReason(null);
+    job.setCreatedAt(LocalDateTime.now());
+    job.setUpdatedAt(LocalDateTime.now());
 
     jobRepository.save(job);
 
     log.info("[Ingestion] Job created: jobId={}, status=UPLOADED", jobId);
 
     return new UploadResponse(jobId, IngestionStatus.UPLOADED);
+  }
+
+  /**
+   * List all ingestion jobs (MongoDB ingestion_jobs collection).
+   */
+  public List<IngestionJob> listAllJobs() {
+    return jobRepository.findAll();
   }
 
   /**
@@ -91,8 +132,8 @@ public class IngestionService {
         .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
 
     return new JobStatusResponse(job.getJobId(), job.getStatus(), job.getProcessedRecords(),
-        job.getTotalRecords(), job.getFilePath(), job.getInsurerId(), job.getCreatedAt(),
-        job.getUpdatedAt());
+        job.getTotalRecords(), job.getFilePath(), job.getInsurerId(), job.getFileType(),
+        job.getCreatedAt(), job.getUpdatedAt(), job.getFailureReason(), job.getVerificationFailures());
   }
         ////TODO : SHEDLOCK FOR SCHEDULING
   /**
@@ -151,6 +192,23 @@ public class IngestionService {
   }
 
   /**
+   * Add verification failures (policy number + reason) for a job.
+   */
+  public void addVerificationFailures(String jobId, List<Map<String, String>> failures) {
+    if (failures == null || failures.isEmpty()) return;
+
+    IngestionJob job = jobRepository.findById(jobId)
+        .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+
+    List<Map<String, String>> existing = job.getVerificationFailures();
+    if (existing == null) existing = new ArrayList<>();
+    existing.addAll(failures);
+    job.setVerificationFailures(existing);
+    job.setUpdatedAt(LocalDateTime.now());
+    jobRepository.save(job);
+  }
+
+  /**
    * Update total records (e.g. when Processing Service determines count).
    */
   public void setTotalRecords(String jobId, int totalRecords) {
@@ -195,6 +253,15 @@ public class IngestionService {
       return null;
     int lastDot = filename.lastIndexOf('.');
     return lastDot > 0 ? filename.substring(lastDot) : null;
+  }
+
+  /** Resolve fileType: use param if provided, else detect from filename (*_correction.csv). */
+  private String resolveFileType(String fileTypeParam, String filename) {
+    if (fileTypeParam != null && "correction".equalsIgnoreCase(fileTypeParam.trim()))
+      return "correction";
+    if (filename != null && filename.toLowerCase().contains("_correction"))
+      return "correction";
+    return "normal";
   }
 
   /**

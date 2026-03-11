@@ -40,16 +40,14 @@ public class GlobalExceptionHandler {
 
     log.warn("Validation failed: {}", errors);
 
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(ApiResponse.<Map<String, String>>builder()
-            .success(false)
-            .message("Validation failed")
-            .data(errors)
-            .error(ApiResponse.ErrorDetails.builder()
-                .code("VALIDATION_ERROR")
-                .message("One or more fields have validation errors")
-                .build())
-            .build());
+    ApiResponse<Map<String, String>> resp = new ApiResponse<>();
+    resp.setSuccess(false);
+    resp.setMessage("Validation failed");
+    resp.setData(errors);
+    ApiResponse.ErrorDetails err = new ApiResponse.ErrorDetails("VALIDATION_ERROR", "One or more fields have validation errors", null);
+    resp.setError(err);
+    resp.setTimestamp(java.time.LocalDateTime.now());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
   }
 
   /**
@@ -78,11 +76,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
     log.error("Runtime exception occurred", ex);
+    String details = buildDetails(ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(ApiResponse.error(
             "An unexpected error occurred",
             "INTERNAL_ERROR",
-            ex.getMessage()));
+            details));
   }
 
   /**
@@ -91,10 +90,18 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
     log.error("Unexpected exception occurred", ex);
+    String details = buildDetails(ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(ApiResponse.error(
             "An unexpected error occurred",
             "INTERNAL_ERROR",
-            ex.getMessage()));
+            details));
+  }
+
+  private String buildDetails(Throwable ex) {
+    if (ex.getCause() != null && ex.getCause() != ex) {
+      return ex.getMessage() + " | Cause: " + ex.getCause().getMessage();
+    }
+    return ex.getMessage();
   }
 }

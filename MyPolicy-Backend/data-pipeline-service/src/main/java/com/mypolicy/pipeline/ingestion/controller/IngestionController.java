@@ -34,6 +34,11 @@ public class IngestionController {
   private final IngestionService ingestionService;
   private final JwtUtil jwtUtil;
 
+  public IngestionController(IngestionService ingestionService, JwtUtil jwtUtil) {
+    this.ingestionService = ingestionService;
+    this.jwtUtil = jwtUtil;
+  }
+
   /**
    * POST /api/v1/ingestion/upload
    * Accepts Excel (.xls, .xlsx) or CSV (.csv) files, validates, stores, creates
@@ -44,14 +49,14 @@ public class IngestionController {
   public ResponseEntity<ApiResponse<UploadResponse>> uploadFile(
       @RequestParam("file") MultipartFile file,
       @RequestParam("insurerId") String insurerId,
-      @RequestHeader("Authorization") String authorizationHeader) {
+      @RequestHeader("Authorization") String authorizationHeader,
+      @RequestParam(value = "fileType", required = false) String fileType) {
 
     try {
-      // Extract username from JWT token
       String uploadedBy = jwtUtil.extractUsernameFromHeader(authorizationHeader);
       log.info("[Ingestion API] POST /upload - insurerId={}, uploadedBy={}", insurerId, uploadedBy);
 
-      UploadResponse response = ingestionService.uploadFile(file, insurerId, uploadedBy);
+      UploadResponse response = ingestionService.uploadFile(file, insurerId, uploadedBy, fileType);
       log.info("[Ingestion API] Upload successful: jobId={}", response.getJobId());
 
       return ResponseEntity.status(HttpStatus.CREATED)

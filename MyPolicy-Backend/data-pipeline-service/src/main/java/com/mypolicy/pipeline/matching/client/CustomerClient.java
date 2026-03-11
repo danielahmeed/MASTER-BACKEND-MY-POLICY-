@@ -4,6 +4,7 @@ import com.mypolicy.pipeline.matching.dto.CustomerDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+
 import java.util.Optional;
 
 /**
@@ -19,4 +20,10 @@ public interface CustomerClient {
 
   @GetMapping("/api/v1/customers/search/mobile/{mobile}")
   Optional<CustomerDTO> searchByMobile(@PathVariable("mobile") String mobile);
+
+  @GetMapping("/api/v1/customers/search/email/{email}")
+  Optional<CustomerDTO> searchByEmail(@PathVariable("email") String email);
+
+  @GetMapping("/api/v1/customers/search/pan/{pan}")
+  Optional<CustomerDTO> searchByPan(@PathVariable("pan") String pan);
 }

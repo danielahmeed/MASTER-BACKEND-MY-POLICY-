@@ -1,11 +1,8 @@
 # ========================================
 # Data Pipeline Service Configuration
 # ========================================
-# Consolidated service containing:
-#   - Ingestion Module (Port 8082)
-#   - Metadata Module
-#   - Processing Module
-#   - Matching Engine Module
+# Uses H2 in-memory database only - no MongoDB or PostgreSQL required.
+# Run: mvn spring-boot:run (default) or mvn spring-boot:run "-Dspring-boot.run.profiles=local"
 # ========================================
 
 server:
@@ -15,41 +12,21 @@ spring:
   application:
     name: data-pipeline-service
 
-  # ========================================
-  # PostgreSQL Configuration (Metadata Module)
-  # ========================================
   datasource:
-    url: jdbc:postgresql://localhost:5432/mypolicy_db
-    username: postgres
-    password: postgres123
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:pipelinedb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
-  # JPA/Hibernate Configuration
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: create
+    show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
 
-  # ========================================
-  # MongoDB Configuration (Ingestion Module)
-  # ========================================
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
-
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/ingestion_db
-      database: ingestion_db
-
-  # ========================================
-  # File Upload Configuration (Ingestion Module)
-  # ========================================
   servlet:
     multipart:
       enabled: true
@@ -59,6 +36,13 @@ spring:
 # File storage
 file:
   upload-dir: ./uploads
+
+# Ingestion module
+ingestion:
+  storage:
+    path: storage/ingestion
+  schema:
+    validate: true
 
 # ========================================
 # Feign Client Configuration (Matching Module)
@@ -82,23 +66,16 @@ feign:
 # Module Specific Configuration
 # ========================================
 pipeline:
-  # Ingestion Module
   ingestion:
     enabled: true
     max-batch-size: 1000
-
-  # Metadata Module
   metadata:
     enabled: true
     cache-ttl: 3600
-
-  # Processing Module
   processing:
     enabled: true
     thread-pool-size: 10
     chunk-size: 100
-
-  # Matching Module
   matching:
     enabled: true
     fuzzy-threshold: 3
@@ -106,7 +83,7 @@ pipeline:
     weak-match-threshold: 3
 
 # ========================================
-# Logging Configuration
+# Logging
 # ========================================
 logging:
   level:
@@ -116,9 +93,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
-# ========================================
-# Actuator Configuration
-# ========================================
 management:
   endpoints:
     web:

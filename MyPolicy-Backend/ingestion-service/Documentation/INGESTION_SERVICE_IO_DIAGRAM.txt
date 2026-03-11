@@ -1,0 +1,65 @@
+================================================================================
+INGESTION SERVICE - INPUTS & OUTPUTS (TEXT DIAGRAM)
+================================================================================
+
+
+  +---------------------------+                    +---------------------------+
+  |         CLIENTS           |                    |   INGESTION SERVICE       |
+  |   (BFF / Processing Svc)  |                    |      (Port 8082)          |
+  +---------------------------+                    +---------------------------+
+            |                                                    |
+            |                                                    |
+  --------  |  POST /api/v1/ingestion/upload  ------------------>|
+            |  IN:  file (multipart: .xls, .xlsx, .csv)          |
+            |       insurerId (form)                             |
+            |       uploadedBy (form)                            |
+            |  OUT: 201 Created                                  |
+            |       { jobId, status }                            |
+            |<---------------------------------------------------|
+            |                                                    |
+  --------  |  GET /api/v1/ingestion/status/{jobId} ------------>|
+            |  IN:  jobId (path)                                 |
+            |  OUT: 200 OK                                       |
+            |       { jobId, status, processedRecords,             |
+            |         totalRecords, filePath, insurerId,           |
+            |         createdAt, updatedAt }                      |
+            |<---------------------------------------------------|
+            |                                                    |
+  --------  |  PATCH /api/v1/ingestion/{jobId}/progress -------->|
+            |  IN:  jobId (path)                                 |
+            |       { "processedRecordsDelta": N }               |
+            |  OUT: 204 No Content                               |
+            |<---------------------------------------------------|
+            |                                                    |
+  --------  |  PATCH /api/v1/ingestion/{jobId}/status ---------->|
+            |  IN:  jobId (path)                                 |
+            |       { "status", "failureReason" (optional) }     |
+            |  OUT: 204 No Content                               |
+            |<---------------------------------------------------|
+            |                                                    |
+            |                                                    |
+  --------  |  STORAGE OUTPUT (side effect)                       |
+            |  File saved: storage/ingestion/{jobId}.xlsx        |
+            |  Job persisted: MongoDB (ingestion_jobs)           |
+            |                                                    |
+
+
+--------------------------------------------------------------------------------
+STATE FLOW
+--------------------------------------------------------------------------------
+
+  UPLOADED  ------>  PROCESSING  ------>  COMPLETED
+                              \
+                               ------>  FAILED
+
+
+--------------------------------------------------------------------------------
+SUMMARY TABLE
+--------------------------------------------------------------------------------
+
+  Endpoint                          | Input                    | Output
+  ----------------------------------|--------------------------|----------------------
+  POST /upload                      | file, insurerId, uploadedBy | 201 { jobId, status }
+  GET /status/{jobId}               | jobId                    | 200 { full job metadata }
+  PATCH /{jobId}/progress           | processedRecordsDelta    | 204
+  PATCH /{jobId}/status             | status, failureReason?   | 204

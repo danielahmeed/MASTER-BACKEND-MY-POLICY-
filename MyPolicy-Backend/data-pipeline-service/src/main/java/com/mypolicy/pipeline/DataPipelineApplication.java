@@ -2,9 +2,10 @@ package com.mypolicy.pipeline;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 /**
  * Data Pipeline Service - Consolidated Service
@@ -15,19 +16,21 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
  * - Processing Module (File parsing and transformation)
  * - Matching Module (Customer identity resolution)
  * 
- * Benefits:
- * - Reduced network latency (no HTTP calls between tightly-coupled modules)
- * - Simpler deployment and operations
- * - Shared resources and caching
- * - Easier debugging and monitoring
+ * Uses H2 (JPA) only - no MongoDB required.
  * 
  * @author MyPolicy Team
  * @version 1.0.0
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+    MongoAutoConfiguration.class,
+    MongoDataAutoConfiguration.class
+})
 @EnableFeignClients(basePackages = "com.mypolicy.pipeline.matching.client")
-@EnableJpaRepositories(basePackages = "com.mypolicy.pipeline.metadata.repository")
-@EnableMongoRepositories(basePackages = "com.mypolicy.pipeline.ingestion.repository")
+@EnableJpaRepositories(basePackages = {
+    "com.mypolicy.pipeline.metadata.repository",
+    "com.mypolicy.pipeline.ingestion.repository",
+    "com.mypolicy.pipeline.portfolio.repository"
+})
 public class DataPipelineApplication {
 
   public static void main(String[] args) {

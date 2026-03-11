@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 – Not Found | Data Pipeline Service</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 520px;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #f8fafc; }
+    p { color: #94a3b8; margin-bottom: 1.5rem; line-height: 1.5; }
+    ul { list-style: none; }
+    li { margin-bottom: 0.5rem; }
+    a {
+      color: #60a5fa;
+      text-decoration: none;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    a:hover { text-decoration: underline; }
+    .note { font-size: 0.85rem; color: #64748b; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>404 – Page Not Found</h1>
+    <p>The path you requested does not exist. Use one of these valid URLs:</p>
+    <ul>
+      <li><a href="/">Insurer Portal (upload & process)</a></li>
+      <li><a href="/insurer-portal/">Insurer Portal</a></li>
+      <li><a href="/api/public/v1/ingestion/jobs">List ingestion jobs (MongoDB)</a></li>
+      <li><a href="/api/public/v1/portfolio">Customer Portfolios (customer + policies)</a></li>
+      <li><a href="/api/public/v1/metadata/insurers">List metadata insurers</a></li>
+    </ul>
+    <p class="note">Ensure data-pipeline-service is running on port 8082. Base URL: http://localhost:8082</p>
+  </div>
+</body>
+</html>

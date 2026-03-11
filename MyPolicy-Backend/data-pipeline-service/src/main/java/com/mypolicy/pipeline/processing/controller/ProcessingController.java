@@ -24,6 +24,11 @@ public class ProcessingController {
   private final ProcessingService processingService;
   private final IngestionService ingestionService;
 
+  public ProcessingController(ProcessingService processingService, IngestionService ingestionService) {
+    this.processingService = processingService;
+    this.ingestionService = ingestionService;
+  }
+
   /**
    * POST /api/v1/processing/trigger
    * Triggers processing for an uploaded file.
